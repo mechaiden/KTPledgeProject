@@ -1,0 +1,10 @@
+venv/
+.venv/
+hf_model/
+Dolphin/
+results/
+uploads/
+__pycache__/
+*.pyc
+.DS_Store
+.env
