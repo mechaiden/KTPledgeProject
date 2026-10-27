@@ -6,9 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (registers tables on Base.metadata)
 from .db import Base, engine
+from .pipeline import fail_interrupted_receipts
+from .receipts import router as receipts_router
 from .routes import router
 
 Base.metadata.create_all(bind=engine)
+fail_interrupted_receipts()
 
 app = FastAPI()
 app.add_middleware(
@@ -19,3 +22,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+app.include_router(receipts_router)

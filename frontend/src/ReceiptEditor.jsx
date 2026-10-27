@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
-import { formatMoney } from './format.js'
-import { CATEGORIES } from './mockData.js'
+import { api } from './api.js'
+import { CATEGORIES, formatMoney } from './format.js'
 
-// Number fields are edited as strings so the inputs can be empty
+// Number inputs are edited as strings so they can be left empty
 const toInput = (n) => (n == null ? '' : String(n))
 const toNumber = (s) => (s === '' ? null : Number(s))
 
-function initialForm(receipt) {
+function toForm(receipt) {
   return {
     merchant: receipt.merchant ?? '',
-    date: receipt.date,
+    date: receipt.date ?? '',
     category: receipt.category ?? '',
-    items: (receipt.items ?? []).map((item) => ({
+    items: receipt.items.map((item) => ({
       key: crypto.randomUUID(),
       name: item.name,
       qty: toInput(item.qty),
@@ -23,8 +23,25 @@ function initialForm(receipt) {
   }
 }
 
-export default function ReceiptDrawer({ receipt, onClose, onSave, onDelete }) {
-  const [form, setForm] = useState(() => initialForm(receipt))
+function fromForm(form) {
+  return {
+    merchant: form.merchant.trim(),
+    date: form.date,
+    category: form.category || null,
+    items: form.items
+      .filter((item) => item.name.trim())
+      .map((item) => ({ name: item.name.trim(), qty: toNumber(item.qty), total: toNumber(item.total) })),
+    subtotal: toNumber(form.subtotal),
+    tax: toNumber(form.tax),
+    total: toNumber(form.total),
+  }
+}
+
+export default function ReceiptEditor({ receipt, onClose, onSaved, onDeleted }) {
+  const [form, setForm] = useState(() => toForm(receipt))
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
     function handleKey(e) {
@@ -52,59 +69,64 @@ export default function ReceiptDrawer({ receipt, onClose, onSave, onDelete }) {
   }
 
   const itemsSum = form.items.reduce((sum, item) => sum + (toNumber(item.total) ?? 0), 0)
-  const hasMissingTotals = form.items.some((item) => item.total === '')
+  const missingPrices = form.items.some((item) => item.total === '')
   const doesntAddUp =
     form.items.length > 0 && form.subtotal !== '' && Math.abs(itemsSum - Number(form.subtotal)) > 0.005
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    onSave({
-      ...receipt,
-      merchant: form.merchant.trim(),
-      date: form.date,
-      category: form.category || null,
-      items: form.items.map((item) => ({ name: item.name, qty: toNumber(item.qty), total: toNumber(item.total) })),
-      subtotal: toNumber(form.subtotal),
-      tax: toNumber(form.tax),
-      total: toNumber(form.total),
-      status: 'done',
-      reviewReason: undefined,
-    })
+    setBusy(true)
+    setError('')
+    try {
+      onSaved(await api(`/receipts/${receipt.id}`, { method: 'PATCH', body: fromForm(form) }))
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
   }
 
-  function handleDelete() {
-    if (window.confirm(`Delete the receipt from ${receipt.merchant}?`)) onDelete(receipt.id)
+  async function handleDelete() {
+    if (!window.confirm(`Delete the receipt from ${receipt.merchant || 'this merchant'}? This can't be undone.`)) return
+    setBusy(true)
+    try {
+      await api(`/receipts/${receipt.id}`, { method: 'DELETE' })
+      onDeleted(receipt.id)
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
   }
 
   return (
-    <div className="drawer-backdrop" onClick={onClose}>
+    <div className="backdrop" onClick={onClose}>
       <form
-        className="drawer"
+        className="editor"
         role="dialog"
         aria-modal="true"
-        aria-label={`Receipt from ${receipt.merchant}`}
+        aria-labelledby="editor-title"
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <header className="drawer-header">
-          <h2>{receipt.merchant}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+        <header className="editor-header">
+          <h2 id="editor-title">Edit receipt</h2>
+          <button type="button" className="link" onClick={onClose}>Close</button>
         </header>
 
-        <div className="drawer-body">
-          <div className="drawer-image">
-            {receipt.imageUrl ? (
-              <a href={receipt.imageUrl} target="_blank" rel="noreferrer">
-                <img src={receipt.imageUrl} alt={`Receipt from ${receipt.merchant}`} />
-              </a>
+        <div className="editor-body">
+          <div className="editor-image">
+            {imageFailed ? (
+              // PDFs (and anything else an <img> can't show) get a link instead
+              <a href={receipt.imageUrl} target="_blank" rel="noreferrer">Open the original file</a>
             ) : (
-              <p className="image-placeholder">No image yet</p>
+              <a href={receipt.imageUrl} target="_blank" rel="noreferrer">
+                <img src={receipt.imageUrl} alt="Uploaded receipt" onError={() => setImageFailed(true)} />
+              </a>
             )}
           </div>
 
-          <div className="drawer-fields">
+          <div className="editor-fields">
             {receipt.status === 'review' && receipt.reviewReason && (
-              <p className="review-banner">⚠ {receipt.reviewReason}</p>
+              <p className="callout">{receipt.reviewReason}. Check the fields below against the image.</p>
             )}
 
             <label className="field">
@@ -119,27 +141,27 @@ export default function ReceiptDrawer({ receipt, onClose, onSave, onDelete }) {
               <label className="field">
                 <span>Category</span>
                 <select value={form.category} onChange={setField('category')}>
-                  <option value="">Choose…</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                  <option value="">None</option>
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
             </div>
 
-            <div className="items">
-              <div className="items-header">
-                <span>Item</span>
-                <span>Qty</span>
-                <span className="num">Total</span>
-                <span />
-              </div>
+            <fieldset className="items">
+              <legend>Items</legend>
+              {form.items.length > 0 && (
+                <div className="item-row item-head" aria-hidden="true">
+                  <span>Name</span>
+                  <span>Qty</span>
+                  <span className="num">Price</span>
+                  <span />
+                </div>
+              )}
               {form.items.map((item) => (
                 <div key={item.key} className={`item-row${item.total === '' ? ' missing' : ''}`}>
                   <input
                     value={item.name}
                     onChange={(e) => setItem(item.key, 'name', e.target.value)}
-                    placeholder="Item name"
                     aria-label="Item name"
                   />
                   <input
@@ -156,35 +178,33 @@ export default function ReceiptDrawer({ receipt, onClose, onSave, onDelete }) {
                     className="num"
                     value={item.total}
                     onChange={(e) => setItem(item.key, 'total', e.target.value)}
-                    placeholder="⚠ missing"
-                    aria-label="Item total"
+                    aria-label="Price"
                   />
-                  <button type="button" className="icon-btn" onClick={() => removeItem(item.key)} aria-label="Remove item">
-                    ✕
+                  <button type="button" className="remove" onClick={() => removeItem(item.key)} aria-label={`Remove ${item.name || 'item'}`}>
+                    ×
                   </button>
                 </div>
               ))}
-              <button type="button" className="btn-link add-item" onClick={addItem}>+ Add item</button>
-            </div>
-
-            {(hasMissingTotals || doesntAddUp) && (
-              <p className="mismatch">
-                {hasMissingTotals
-                  ? 'Some items are missing a total.'
-                  : `Items add up to ${formatMoney(itemsSum)}, but the subtotal is ${formatMoney(Number(form.subtotal))}.`}
-              </p>
-            )}
+              <button type="button" className="link" onClick={addItem}>Add an item</button>
+              {(missingPrices || doesntAddUp) && (
+                <p className="warn-text">
+                  {missingPrices
+                    ? 'Some items have no price.'
+                    : `Items add up to ${formatMoney(itemsSum)}, but the subtotal is ${formatMoney(Number(form.subtotal))}.`}
+                </p>
+              )}
+            </fieldset>
 
             <div className="totals">
-              <label className="field-inline">
+              <label>
                 <span>Subtotal</span>
                 <input type="number" step="0.01" className="num" value={form.subtotal} onChange={setField('subtotal')} />
               </label>
-              <label className="field-inline">
+              <label>
                 <span>Tax</span>
                 <input type="number" step="0.01" className="num" value={form.tax} onChange={setField('tax')} />
               </label>
-              <label className="field-inline total-line">
+              <label className="grand-total">
                 <span>Total</span>
                 <input type="number" step="0.01" className="num" value={form.total} onChange={setField('total')} required />
               </label>
@@ -192,11 +212,12 @@ export default function ReceiptDrawer({ receipt, onClose, onSave, onDelete }) {
           </div>
         </div>
 
-        <footer className="drawer-footer">
-          <button type="button" className="btn btn-danger" onClick={handleDelete}>Delete</button>
-          <div className="drawer-footer-right">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save changes ✓</button>
+        <footer className="editor-footer">
+          <button type="button" className="button danger" onClick={handleDelete} disabled={busy}>Delete</button>
+          {error && <p className="error">{error}</p>}
+          <div className="editor-actions">
+            <button type="button" className="button" onClick={onClose}>Cancel</button>
+            <button type="submit" className="button primary" disabled={busy}>Save</button>
           </div>
         </footer>
       </form>

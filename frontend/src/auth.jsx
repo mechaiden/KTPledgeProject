@@ -1,20 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { api } from './api.js'
 
 const AuthContext = createContext(null)
-
-async function api(path, options = {}) {
-  const res = await fetch(`/api${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail
-    throw new Error(detail || `Request failed (${res.status})`)
-  }
-  return res.status === 204 ? null : res.json()
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -28,11 +15,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function login(email, password) {
-    setUser(await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }))
+    setUser(await api('/auth/login', { method: 'POST', body: { email, password } }))
   }
 
   async function register(email, password) {
-    setUser(await api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }))
+    setUser(await api('/auth/register', { method: 'POST', body: { email, password } }))
   }
 
   async function logout() {
@@ -41,7 +28,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, api }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

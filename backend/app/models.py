@@ -1,9 +1,13 @@
-from datetime import datetime, timezone
+import datetime as dt
 
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
+
+
+def utcnow() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
 
 
 class User(Base):
@@ -12,6 +16,41 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Receipt(Base):
+    __tablename__ = "receipts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    file_path: Mapped[str] = mapped_column(String(500))
+    # 'processing' | 'review' | 'done'
+    status: Mapped[str] = mapped_column(String(20), default="processing")
+    review_reason: Mapped[str | None] = mapped_column(String(255))
+
+    date: Mapped[dt.date | None] = mapped_column(Date)
+    merchant: Mapped[str | None] = mapped_column(String(255))
+    category: Mapped[str | None] = mapped_column(String(50))
+    subtotal: Mapped[float | None] = mapped_column(Float)
+    tax: Mapped[float | None] = mapped_column(Float)
+    total: Mapped[float | None] = mapped_column(Float)
+
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    items: Mapped[list["LineItem"]] = relationship(
+        back_populates="receipt", cascade="all, delete-orphan", order_by="LineItem.id"
     )
+
+
+class LineItem(Base):
+    __tablename__ = "line_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    receipt_id: Mapped[int] = mapped_column(ForeignKey("receipts.id"), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    qty: Mapped[int | None] = mapped_column(Integer)
+    # Nullable because the OCR sometimes misses a line total
+    total: Mapped[float | None] = mapped_column(Float)
+
+    receipt: Mapped[Receipt] = relationship(back_populates="items")

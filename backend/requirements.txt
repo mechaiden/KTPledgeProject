@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pyjwt
+pwdlib[argon2]
+pydantic[email]
+python-dotenv
+python-multipart
+# Dolphin's own dependencies (torch, transformers, ...) are installed from ../Dolphin/requirements.txt
