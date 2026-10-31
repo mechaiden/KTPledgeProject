@@ -1,0 +1,24 @@
+[
+  {
+    "label": "sec_1",
+    "bbox": [
+      43,
+      41,
+      518,
+      134
+    ],
+    "text": "MAPLE STREET OFFICE SUPPLY\n482 Maple Street, Suite 3\nTel (555) 013-2290",
+    "reading_order": 0
+  },
+  {
+    "label": "catalogue",
+    "bbox": [
+      22,
+      175,
+      538,
+      957
+    ],
+    "text": "Date: 10/14/2026\nTime: 2:37 PM\nReceipt #: 004817\nRegister: 02\n----------------------------------\nPrinter Paper 500ct\n2 @ $8.49\n$16.98\nBlack Ink Cartridge\n1 @ $34.99\n$34.99\nShipping Labels 100\n1 @ $12.75\nPacking Tape 3pk\n1 @ $9.29\n$9.29\nBallpoint Pens 12pk\n3 @ $4.19\n$12.57\n----------------------------------\nSUBTOTAL\n$86.58\nSALES TAX 7.0%\n$6.06\nTOTAL\n$92.64\nVISA ****4417\n$92.64\nAPPROVED\nAUTH: 093351\n\nThank you for shopping with us!\nReturns within 30 days w/ receipt",
+    "reading_order": 1
+  }
+]

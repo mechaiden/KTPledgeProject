@@ -89,8 +89,11 @@ def update_receipt(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Receipt is still being read")
     receipt.merchant = body.merchant.strip()
     receipt.date = body.date
-    receipt.category = body.category
+    if body.category != receipt.category:
+        receipt.category = body.category
+        receipt.category_source = "user"  # remembered for this merchant's future receipts
     receipt.subtotal = body.subtotal
+    receipt.discount = body.discount
     receipt.tax = body.tax
     receipt.total = body.total
     receipt.items = [LineItem(**item.model_dump()) for item in body.items]

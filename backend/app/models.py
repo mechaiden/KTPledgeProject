@@ -1,9 +1,10 @@
 import datetime as dt
 
 from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from .db import Base
+from .merchants import normalize_merchant
 
 
 def utcnow() -> dt.datetime:
@@ -31,8 +32,13 @@ class Receipt(Base):
 
     date: Mapped[dt.date | None] = mapped_column(Date)
     merchant: Mapped[str | None] = mapped_column(String(255))
+    # Groups spellings of the same store; kept up to date by the validator below
+    merchant_key: Mapped[str | None] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(50))
+    # 'auto' | 'user'
+    category_source: Mapped[str] = mapped_column(String(20), default="auto")
     subtotal: Mapped[float | None] = mapped_column(Float)
+    discount: Mapped[float | None] = mapped_column(Float)
     tax: Mapped[float | None] = mapped_column(Float)
     total: Mapped[float | None] = mapped_column(Float)
 
@@ -41,6 +47,11 @@ class Receipt(Base):
     items: Mapped[list["LineItem"]] = relationship(
         back_populates="receipt", cascade="all, delete-orphan", order_by="LineItem.id"
     )
+
+    @validates("merchant")
+    def _update_merchant_key(self, _key: str, merchant: str | None) -> str | None:
+        self.merchant_key = normalize_merchant(merchant)
+        return merchant
 
 
 class LineItem(Base):

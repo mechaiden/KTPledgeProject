@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { CATEGORIES, formatMoney } from './format.js'
+import { formatMoney } from './format.js'
 
 // Number inputs are edited as strings so they can be left empty
 const toInput = (n) => (n == null ? '' : String(n))
+const toMoneyInput = (n) => (n == null ? '' : n.toFixed(2))
 const toNumber = (s) => (s === '' ? null : Number(s))
 
 function toForm(receipt) {
@@ -15,11 +16,12 @@ function toForm(receipt) {
       key: crypto.randomUUID(),
       name: item.name,
       qty: toInput(item.qty),
-      total: toInput(item.total),
+      total: toMoneyInput(item.total),
     })),
-    subtotal: toInput(receipt.subtotal),
-    tax: toInput(receipt.tax),
-    total: toInput(receipt.total),
+    subtotal: toMoneyInput(receipt.subtotal),
+    discount: toMoneyInput(receipt.discount),
+    tax: toMoneyInput(receipt.tax),
+    total: toMoneyInput(receipt.total),
   }
 }
 
@@ -32,12 +34,13 @@ function fromForm(form) {
       .filter((item) => item.name.trim())
       .map((item) => ({ name: item.name.trim(), qty: toNumber(item.qty), total: toNumber(item.total) })),
     subtotal: toNumber(form.subtotal),
+    discount: toNumber(form.discount),
     tax: toNumber(form.tax),
     total: toNumber(form.total),
   }
 }
 
-export default function ReceiptEditor({ receipt, onClose, onSaved, onDeleted }) {
+export default function ReceiptEditor({ receipt, categories, onClose, onSaved, onDeleted }) {
   const [form, setForm] = useState(() => toForm(receipt))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -142,7 +145,7 @@ export default function ReceiptEditor({ receipt, onClose, onSaved, onDeleted }) 
                 <span>Category</span>
                 <select value={form.category} onChange={setField('category')}>
                   <option value="">None</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
             </div>
@@ -199,6 +202,10 @@ export default function ReceiptEditor({ receipt, onClose, onSaved, onDeleted }) 
               <label>
                 <span>Subtotal</span>
                 <input type="number" step="0.01" className="num" value={form.subtotal} onChange={setField('subtotal')} />
+              </label>
+              <label>
+                <span>Discount</span>
+                <input type="number" step="0.01" min="0" className="num" value={form.discount} onChange={setField('discount')} />
               </label>
               <label>
                 <span>Tax</span>

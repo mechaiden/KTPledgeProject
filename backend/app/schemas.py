@@ -1,7 +1,9 @@
 import datetime as dt
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from pydantic.alias_generators import to_camel
+
+from .pipeline.classifier import CATEGORIES
 
 
 class CamelModel(BaseModel):
@@ -24,6 +26,7 @@ class ReceiptOut(CamelModel):
     merchant: str | None
     category: str | None
     subtotal: float | None
+    discount: float | None
     tax: float | None
     total: float | None
     items: list[LineItemSchema]
@@ -39,6 +42,14 @@ class ReceiptUpdate(CamelModel):
     date: dt.date
     category: str | None = None
     subtotal: float | None = None
+    discount: float | None = None
     tax: float | None = None
     total: float
     items: list[LineItemSchema] = []
+
+    @field_validator("category")
+    @classmethod
+    def category_must_be_known(cls, category: str | None) -> str | None:
+        if category is not None and category not in CATEGORIES:
+            raise ValueError(f"Unknown category: {category}")
+        return category

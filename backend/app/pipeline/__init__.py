@@ -3,7 +3,7 @@ from pathlib import Path
 
 from ..db import SessionLocal
 from ..models import LineItem, Receipt
-from .classifier import classify
+from .classifier import classify, remembered_category
 from .extractor import extract_fields
 from .parser import parse_document
 
@@ -43,10 +43,13 @@ def process_receipt(receipt_id: int) -> None:
         receipt.merchant = data.merchant or receipt.merchant
         receipt.date = data.date or receipt.date
         receipt.subtotal = data.subtotal
+        receipt.discount = data.discount
         receipt.tax = data.tax
         receipt.total = data.total
         receipt.items = [LineItem(name=i.name, qty=i.qty, total=i.total) for i in data.items]
-        receipt.category = classify(receipt.merchant, [i.name for i in data.items])
+        receipt.category = remembered_category(db, receipt) or classify(
+            receipt.merchant, [i.name for i in data.items]
+        )
         receipt.status, receipt.review_reason = check_receipt(receipt)
         db.commit()
     finally:

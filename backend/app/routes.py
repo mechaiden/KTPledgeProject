@@ -13,6 +13,7 @@ from .auth import (
 )
 from .db import get_db
 from .models import User
+from .pipeline.classifier import CATEGORIES
 
 router = APIRouter(prefix="/api")
 
@@ -66,6 +67,11 @@ def logout(response: Response):
 @router.get("/auth/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.get("/categories")
+def categories():
+    return CATEGORIES
 
 
 @router.get("/public")

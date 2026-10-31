@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import { useAuth } from './auth.jsx'
-import { CATEGORIES, addMonths, currentMonth, formatMoney, formatMonth, monthOf } from './format.js'
+import { addMonths, currentMonth, formatDate, formatMoney, formatMonth, monthOf } from './format.js'
 import ReceiptEditor from './ReceiptEditor.jsx'
 import ReceiptTable from './ReceiptTable.jsx'
 
@@ -12,11 +12,11 @@ function sumTotals(receipts) {
   return receipts.reduce((sum, r) => sum + (r.total ?? 0), 0)
 }
 
-function MonthSummary({ receipts }) {
+function MonthSummary({ receipts, categories }) {
   // Receipts still being read have no total yet, so leave them out
   const counted = receipts.filter((r) => r.status !== 'processing')
   const total = sumTotals(counted)
-  const byCategory = CATEGORIES.map((category) => ({
+  const byCategory = categories.map((category) => ({
     category,
     total: sumTotals(counted.filter((r) => (r.category ?? 'Other') === category)),
   })).filter((c) => c.total > 0)
@@ -54,18 +54,34 @@ function MonthSummary({ receipts }) {
 export default function ReceiptsPage() {
   const { user, logout } = useAuth()
   const [receipts, setReceipts] = useState(null) // null while the first load is in flight
+  const [categories, setCategories] = useState([])
   const [loadError, setLoadError] = useState('')
   const [month, setMonth] = useState(currentMonth)
   const [reviewOnly, setReviewOnly] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [uploadErrors, setUploadErrors] = useState([])
   const [dragging, setDragging] = useState(false)
+  // Uploads that finished reading but are dated in another month, so they've left the current view
+  const [filedElsewhere, setFiledElsewhere] = useState([])
   const fileInputRef = useRef(null)
+  const uploadingIds = useRef(new Set())
 
-  const refresh = useCallback(() => api('/receipts').then(setReceipts), [])
+  const refresh = useCallback(
+    () =>
+      api('/receipts').then((next) => {
+        const finished = next.filter((r) => uploadingIds.current.has(r.id) && r.status !== 'processing')
+        finished.forEach((r) => uploadingIds.current.delete(r.id))
+        // Uploads start out dated today, then move to the date printed on the receipt
+        const moved = finished.filter((r) => monthOf(r.date) !== currentMonth())
+        if (moved.length) setFiledElsewhere((prev) => [...prev, ...moved])
+        setReceipts(next)
+      }),
+    [],
+  )
 
   useEffect(() => {
     refresh().catch((err) => setLoadError(err.message))
+    api('/categories').then(setCategories).catch((err) => setLoadError(err.message))
   }, [refresh])
 
   // Keep checking back while anything is still being read
@@ -86,6 +102,7 @@ export default function ReceiptsPage() {
       form.append('file', file)
       try {
         const created = await api('/receipts', { method: 'POST', body: form })
+        uploadingIds.current.add(created.id)
         setReceipts((prev) => [created, ...prev])
       } catch (err) {
         errors.push(`${file.name}: ${err.message}`)
@@ -125,6 +142,16 @@ export default function ReceiptsPage() {
   const needsReview = monthReceipts.filter((r) => r.status === 'review')
   const rows = reviewOnly ? needsReview : monthReceipts
   const selected = receipts?.find((r) => r.id === selectedId) ?? null
+  // Drop notices for receipts that were deleted or that the user has already gone to see
+  const notices = filedElsewhere.filter(
+    (r) => monthOf(r.date) !== month && receipts?.some((existing) => existing.id === r.id),
+  )
+
+  function showMonthOf(receipt) {
+    setMonth(monthOf(receipt.date))
+    setReviewOnly(false)
+    setFiledElsewhere((prev) => prev.filter((r) => r.id !== receipt.id))
+  }
 
   let emptyMessage = `No receipts in ${formatMonth(month)}.`
   if (receipts?.length === 0) emptyMessage = 'No receipts yet. Add one to get started.'
@@ -141,10 +168,10 @@ export default function ReceiptsPage() {
       <main className="content">
         <div className="month-bar">
           <div className="month-nav">
+            <h1>{formatMonth(month)}</h1>
             <button type="button" className="step" onClick={() => setMonth(addMonths(month, -1))} aria-label="Previous month">
               ‹
             </button>
-            <h1>{formatMonth(month)}</h1>
             <button
               type="button"
               className="step"
@@ -177,11 +204,28 @@ export default function ReceiptsPage() {
           </ul>
         )}
 
+        {notices.map((r) => (
+          <p key={r.id} className="notice">
+            {r.merchant || 'Your receipt'} is dated {formatDate(r.date)}, so it’s filed under {formatMonth(monthOf(r.date))}.{' '}
+            <button type="button" className="link" onClick={() => showMonthOf(r)}>
+              Go to {formatMonth(monthOf(r.date))}
+            </button>
+            <button
+              type="button"
+              className="dismiss"
+              onClick={() => setFiledElsewhere((prev) => prev.filter((x) => x.id !== r.id))}
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </p>
+        ))}
+
         {receipts === null ? (
           <p className={loadError ? 'error' : 'muted'}>{loadError || 'Loading…'}</p>
         ) : (
           <>
-            <MonthSummary receipts={monthReceipts} />
+            {monthReceipts.length > 0 && <MonthSummary receipts={monthReceipts} categories={categories} />}
 
             <div className="tabs" role="tablist">
               <button type="button" role="tab" aria-selected={!reviewOnly} onClick={() => setReviewOnly(false)}>
@@ -214,6 +258,7 @@ export default function ReceiptsPage() {
         <ReceiptEditor
           key={selected.id}
           receipt={selected}
+          categories={categories}
           onClose={() => setSelectedId(null)}
           onSaved={handleSaved}
           onDeleted={handleDeleted}

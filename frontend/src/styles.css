@@ -12,9 +12,13 @@
   --warn-wash: #fbf1e1;
   --danger: #a3302a;
 
-  --food: #c17a3a;
-  --office: #3f6c8f;
-  --travel: #6b8f4e;
+  --dining: #c17a3a;
+  --groceries: #6b8f4e;
+  --transportation: #3f6c8f;
+  --travel: #5fa3a8;
+  --shopping: #8a5a83;
+  --health: #b5545c;
+  --entertainment: #d0a93f;
   --other: #9a948a;
 
   --sans: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -121,8 +125,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 }
 
 .month-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.month-nav { display: flex; align-items: center; gap: 6px; }
-.month-nav h1 { font-family: var(--serif); font-size: 30px; font-weight: 500; min-width: 9.5em; text-align: center; }
+.month-bar .button { white-space: nowrap; }
+.month-nav { display: flex; align-items: center; gap: 4px; }
+.month-nav h1 { font-family: var(--serif); font-size: 30px; font-weight: 500; margin-right: 10px; white-space: nowrap; }
 .step {
   width: 32px;
   height: 32px;
@@ -145,6 +150,19 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   font-size: 14px;
 }
 
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--wash);
+  font-size: 14px;
+}
+.notice .link { margin-left: 4px; }
+.dismiss { margin-left: auto; padding: 0 2px; border: none; background: none; font-size: 18px; line-height: 1; color: var(--ink-soft); }
+.dismiss:hover { color: var(--ink); }
+
 /* Month summary */
 
 .summary {
@@ -165,9 +183,13 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .split-legend .num { color: var(--ink-soft); }
 .swatch { width: 10px; height: 10px; }
 
-[data-category='Food'] { background: var(--food); }
-[data-category='Office'] { background: var(--office); }
+[data-category='Dining'] { background: var(--dining); }
+[data-category='Groceries'] { background: var(--groceries); }
+[data-category='Transportation'] { background: var(--transportation); }
 [data-category='Travel'] { background: var(--travel); }
+[data-category='Shopping'] { background: var(--shopping); }
+[data-category='Health'] { background: var(--health); }
+[data-category='Entertainment'] { background: var(--entertainment); }
 [data-category='Other'] { background: var(--other); }
 
 /* Tabs */
@@ -325,7 +347,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 
 @media (max-width: 720px) {
   .summary { grid-template-columns: 1fr; gap: 16px; }
-  .month-nav h1 { font-size: 24px; min-width: 0; }
+  .month-nav h1 { font-size: 22px; margin-right: 4px; }
   .ledger .col-category { display: none; }
   .topbar-user { display: none; }
   .topbar .link { margin-left: auto; }
