@@ -50,12 +50,12 @@ function MonthSummary({ receipts, categories }) {
   )
 }
 
-export default function ReceiptsPage() {
+export default function ReceiptsPage({ initialReviewOnly = false, pendingUpload = null, onPendingUploadHandled, onReceiptsChange }) {
   const [receipts, setReceipts] = useState(null) // null while the first load is in flight
   const [categories, setCategories] = useState([])
   const [loadError, setLoadError] = useState('')
   const [month, setMonth] = useState(currentMonth)
-  const [reviewOnly, setReviewOnly] = useState(false)
+  const [reviewOnly, setReviewOnly] = useState(initialReviewOnly)
   const [selectedId, setSelectedId] = useState(null)
   const [uploadErrors, setUploadErrors] = useState([])
   const [dragging, setDragging] = useState(false)
@@ -76,6 +76,12 @@ export default function ReceiptsPage() {
       }),
     [],
   )
+
+  // Keep the shell's review badge and Insights in step with this list
+  useEffect(() => {
+    if (receipts) onReceiptsChange?.(receipts)
+  }, [receipts, onReceiptsChange])
+
 
   useEffect(() => {
     refresh().catch((err) => setLoadError(err.message))
@@ -113,6 +119,22 @@ export default function ReceiptsPage() {
       setReviewOnly(false)
     }
   }
+
+  // "Add receipts" (or files dropped on Insights) sends us here with work to do.
+  // The ref stops StrictMode's second effect run from uploading the same files twice.
+  const handledUpload = useRef(null)
+  useEffect(() => {
+    if (!pendingUpload) {
+      handledUpload.current = null
+      return
+    }
+    if (handledUpload.current === pendingUpload) return
+    handledUpload.current = pendingUpload
+    if (pendingUpload === 'picker') fileInputRef.current?.click()
+    else upload(pendingUpload)
+    onPendingUploadHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- upload only reads setters and refs
+  }, [pendingUpload, onPendingUploadHandled])
 
   function handleDragOver(e) {
     if (!e.dataTransfer.types.includes('Files')) return
