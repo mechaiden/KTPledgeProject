@@ -53,3 +53,46 @@ class ReceiptUpdate(CamelModel):
         if category is not None and category not in CATEGORIES:
             raise ValueError(f"Unknown category: {category}")
         return category
+
+
+# --- Insights (spending stats) ---
+
+
+class CategorySpend(CamelModel):
+    category: str
+    total: float
+    prev_total: float
+    change: float
+
+
+class TrendMonth(CamelModel):
+    month: str
+    total: float
+    by_category: dict[str, float]
+
+
+class MerchantStat(CamelModel):
+    merchant_key: str
+    name: str | None
+    visits: int
+    total: float
+    avg_per_visit: float
+
+
+class WeekdayStat(CamelModel):
+    weekday: str
+    total: float
+    visits: int
+
+
+class ReceiptSizeStat(CamelModel):
+    category: str
+    count: int
+    average: float
+    median: float
+
+
+class SavingsStat(CamelModel):
+    discount_total: float
+    tax_total: float
+    receipt_count: int

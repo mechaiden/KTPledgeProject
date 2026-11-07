@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import models  # noqa: F401  (registers tables on Base.metadata)
 from .db import Base, engine
 from .pipeline import fail_interrupted_receipts
+from .insights_routes import router as insights_router
 from .receipts import router as receipts_router
 from .routes import router
 
@@ -23,3 +24,4 @@ app.add_middleware(
 )
 app.include_router(router)
 app.include_router(receipts_router)
+app.include_router(insights_router)
