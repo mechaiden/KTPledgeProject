@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
-import { useAuth } from './auth.jsx'
 import { addMonths, currentMonth, formatDate, formatMoney, formatMonth, monthOf } from './format.js'
 import ReceiptEditor from './ReceiptEditor.jsx'
 import ReceiptTable from './ReceiptTable.jsx'
@@ -52,7 +51,6 @@ function MonthSummary({ receipts, categories }) {
 }
 
 export default function ReceiptsPage() {
-  const { user, logout } = useAuth()
   const [receipts, setReceipts] = useState(null) // null while the first load is in flight
   const [categories, setCategories] = useState([])
   const [loadError, setLoadError] = useState('')
@@ -159,12 +157,6 @@ export default function ReceiptsPage() {
 
   return (
     <div className="page" onDragOver={handleDragOver}>
-      <header className="topbar">
-        <span className="wordmark">KTPledge</span>
-        <span className="topbar-user">{user.email}</span>
-        <button type="button" className="link" onClick={logout}>Log out</button>
-      </header>
-
       <main className="content">
         <div className="month-bar">
           <div className="month-nav">

@@ -27,6 +27,12 @@ export function addMonths(month, n) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// "2026-10" -> "Oct"
+export function formatShortMonth(month) {
+  const [year, m] = month.split('-').map(Number)
+  return new Date(year, m - 1, 1).toLocaleDateString('en-US', { month: 'short' })
+}
+
 // "2026-10" -> "October 2026"
 export function formatMonth(month) {
   const [year, m] = month.split('-').map(Number)
