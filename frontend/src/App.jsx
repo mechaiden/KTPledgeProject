@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChartColumn, LogOut, Plus, ReceiptText } from 'lucide-react'
+import { ChartColumn, Keyboard, LogOut, Plus, ReceiptText, X } from 'lucide-react'
 import { api } from './api.js'
 import AddSheet from './AddSheet.jsx'
 import BoxMark from './BoxMark.jsx'
@@ -61,12 +61,55 @@ function initials(email) {
   return letters.toUpperCase()
 }
 
-function AccountMenu({ email, onLogout }) {
+const SHORTCUTS = [
+  ['Previous / next month', '← →'],
+  ['Focus a category', '1–8'],
+  ['Show all categories', '0'],
+  ['Search merchants', '/'],
+  ['Clear filters, close panels', 'Esc'],
+  ['Show this list', '?'],
+]
+
+function ShortcutsDialog({ onClose }) {
+  const closeRef = useRef(null)
+  useEffect(() => {
+    closeRef.current?.focus()
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div className="scrim" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sheet shortcuts" role="dialog" aria-modal="true" aria-labelledby="ks-h">
+        <div className="sheet-head">
+          <h2 id="ks-h">Keyboard shortcuts</h2>
+          <button ref={closeRef} type="button" className="icon-button sheet-close" onClick={onClose} aria-label="Close">
+            <X size={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+        <dl className="shortcut-list">
+          {SHORTCUTS.map(([what, key]) => (
+            <div key={what}>
+              <dt>{what}</dt>
+              <dd><kbd className="kbd">{key}</kbd></dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  )
+}
+
+function AccountMenu({ email, onLogout, onShortcuts }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const firstItem = useRef(null)
 
   useEffect(() => {
     if (!open) return
+    firstItem.current?.focus()
     const close = (e) => {
       if (e.type === 'keydown' ? e.key === 'Escape' : !ref.current?.contains(e.target)) setOpen(false)
     }
@@ -91,12 +134,35 @@ function AccountMenu({ email, onLogout }) {
         {initials(email)}
       </button>
       {open && (
-        <div className="account-menu" role="menu">
-          <p className="account-email">{email}</p>
-          <button type="button" role="menuitem" className="menu-item" onClick={onLogout}>
-            <LogOut size={16} strokeWidth={2} aria-hidden="true" />
-            Log out
-          </button>
+        <div className="account-menu" role="menu" aria-label="Account">
+          <div className="account-who">
+            <span className="avatar is-static" aria-hidden="true">{initials(email)}</span>
+            <span className="account-text">
+              <span className="account-label">Signed in as</span>
+              <span className="account-email">{email}</span>
+            </span>
+          </div>
+          <div className="account-items">
+            <button
+              ref={firstItem}
+              type="button"
+              role="menuitem"
+              className="menu-item"
+              onClick={() => {
+                setOpen(false)
+                onShortcuts()
+              }}
+            >
+              <Keyboard size={16} strokeWidth={2} aria-hidden="true" />
+              Keyboard shortcuts
+              <kbd className="kbd menu-kbd">?</kbd>
+            </button>
+            <button type="button" role="menuitem" className="menu-item" onClick={onLogout}>
+              <LogOut size={16} strokeWidth={2} aria-hidden="true" />
+              Sign out
+            </button>
+          </div>
+          <p className="account-note">Your receipts are read on Shoebox’s own server, not sent to an outside AI service.</p>
         </div>
       )}
     </div>
@@ -131,6 +197,21 @@ export default function App() {
   const [review, setReview] = useState(null)
   const [adding, setAdding] = useState(false)
   const closeAdd = useCallback(() => setAdding(false), [])
+  const [shortcuts, setShortcuts] = useState(false)
+  const closeShortcuts = useCallback(() => setShortcuts(false), [])
+
+  // ? opens the shortcut list from anywhere, unless typing or a dialog is open
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return
+      const el = e.target
+      if (el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
+      if (document.querySelector('[role="dialog"]')) return
+      setShortcuts(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const closeReview = useCallback(() => setReview(null), [])
   const [toast, setToast] = useState(null)
   useEffect(() => {
@@ -183,7 +264,7 @@ export default function App() {
             <Plus size={16} strokeWidth={2} aria-hidden="true" />
             Add receipts
           </button>
-          <AccountMenu email={user.email} onLogout={logout} />
+          <AccountMenu email={user.email} onLogout={logout} onShortcuts={() => setShortcuts(true)} />
         </div>
       </header>
 
@@ -221,6 +302,7 @@ export default function App() {
           onDeleted={handleDeleted}
         />
       )}
+      {shortcuts && <ShortcutsDialog onClose={closeShortcuts} />}
       {adding && <AddSheet onFiles={addReceipts} onClose={closeAdd} />}
       {toast && <div className="toast" role="status">{toast}</div>}
 

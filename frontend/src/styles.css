@@ -257,38 +257,47 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 .account { position: relative; }
 .account-menu {
   position: absolute;
-  top: calc(100% + var(--space-2));
+  top: calc(100% + 10px);
   right: 0;
   z-index: 20;
-  min-width: 220px;
-  padding: var(--space-2);
+  width: 300px;
+  overflow: hidden;
   border: 1px solid var(--rule);
-  border-radius: var(--radius-card);
+  border-radius: 10px;
   background: var(--surface);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 14%, transparent);
+  animation: toast-in-plain 200ms var(--ease) both;
 }
-.account-email {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: var(--space-1);
-  color: var(--ink-soft);
-  font-size: var(--text-13);
-  overflow-wrap: anywhere;
-}
+@keyframes toast-in-plain { from { opacity: 0; transform: translateY(8px); } }
+.account-who { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-4) 14px; border-bottom: 1px solid var(--wash); }
+.avatar.is-static { display: grid; place-items: center; flex: 0 0 auto; width: 40px; height: 40px; border: 0; background: var(--wash); cursor: default; }
+.account-text { min-width: 0; }
+.account-label { display: block; color: var(--ink-soft); font-size: var(--text-13); }
+.account-email { display: block; overflow: hidden; font-size: var(--text-15); font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.account-items { padding: 6px; }
 .menu-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
   width: 100%;
   min-height: var(--target);
-  padding: 0 var(--space-3);
+  padding: 0 10px;
   border: none;
   border-radius: var(--radius-control);
   background: none;
+  color: var(--ink);
+  font-size: var(--text-15);
   text-align: left;
+  cursor: pointer;
 }
+.menu-kbd { margin-left: auto; }
 @media (hover: hover) {
-  .menu-item:hover { background: var(--wash); }
+  .menu-item:hover { background: var(--row-quiet); }
 }
+.account-note { padding: var(--space-3) var(--space-4) 14px; border-top: 1px solid var(--wash); color: var(--ink-soft); font-size: var(--text-13); line-height: 1.45; }
+.shortcuts { max-width: 440px; }
+.shortcut-list div { display: flex; justify-content: space-between; align-items: center; min-height: var(--target); border-bottom: 1px solid var(--wash); font-size: var(--text-15); }
+.shortcut-list dd { margin: 0; }
 
 .tabbar, .fab { display: none; }
 
@@ -445,12 +454,30 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 /* ============================================================
    Sign in (restyled in slice 6; ported to tokens for now)
    ============================================================ */
-.login { max-width: 380px; margin: 0 auto; padding: 14vh var(--gutter) var(--space-12); }
-.login .wordmark { display: block; margin-bottom: var(--space-8); }
-.login h1 { font-size: var(--text-28); margin-bottom: var(--space-6); }
-.login form { display: flex; flex-direction: column; gap: var(--space-4); }
-.login .button.primary { margin-top: var(--space-2); }
-.login-switch { margin-top: var(--space-6); font-size: var(--text-14); color: var(--ink-soft); }
+.login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: var(--space-4); }
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.login-mark { font-size: 19px; }
+.login-card h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.login-lede { margin-top: 6px; color: var(--ink-soft); font-size: var(--text-15); }
+.login-card .field { flex: none; gap: 6px; font-size: var(--text-14); font-weight: 600; }
+.login-card .field input { font-size: var(--text-15); font-weight: 400; }
+.login-card .field small { font-size: var(--text-13); }
+.login-submit { min-height: 48px; font-size: var(--text-15); font-weight: 600; }
+.login-switch { color: var(--ink-soft); font-size: var(--text-14); text-align: center; }
+.login-switch .link { font-weight: 600; }
+@media (max-width: 640px) {
+  .login-card { padding: var(--space-6); }
+}
 
 /* ============================================================
    Narrow screens
