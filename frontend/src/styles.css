@@ -10,6 +10,8 @@
   --rule: #e3e6ea;
   --rule-strong: #d5d9df;
   --wash: #eef0f3;
+  --bar-idle: #c9ced6; /* unselected bars */
+  --pace: #8a909c;     /* dashed projection outlines */
 
   --up: #b4471f;   /* more spending: worse */
   --down: #1f5fbf; /* less spending: better */
@@ -17,6 +19,7 @@
   --review-wash: #fff6ee;
   --review-border: #f4dcc6;
   --review-text: #5c4632;
+  --review-button-border: #e3d0be;
 
   --dining: #e0702e;
   --groceries: #4c9a62;
@@ -353,76 +356,12 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 /* ============================================================
    Insights
    ============================================================ */
-.insights { display: flex; flex-direction: column; gap: var(--space-4); }
+.insights { display: flex; flex-direction: column; gap: 20px; }
 
 .month-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
 .month-bar h1 { font-size: var(--text-28); letter-spacing: -0.01em; white-space: nowrap; }
 .month-steps { display: flex; gap: var(--space-1); }
 .month-steps .icon-button { border-color: var(--rule); background: var(--surface); }
-
-/* Month total, with the torn-receipt edge (used nowhere else) */
-.total-card {
-  position: relative;
-  padding: var(--space-8);
-  margin-bottom: var(--space-3);
-  border-bottom: none;
-  border-radius: var(--radius-card) var(--radius-card) 0 0;
-}
-.total-card::before,
-.total-card::after {
-  content: '';
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  height: 9px;
-  -webkit-mask: conic-gradient(from 135deg at top, #000 90deg, #0000 0) 0 0 / 18px 100% repeat-x;
-  mask: conic-gradient(from 135deg at top, #000 90deg, #0000 0) 0 0 / 18px 100% repeat-x;
-}
-/* The rule-colored teeth peek 1px below the white ones to draw the edge */
-.total-card::before { top: calc(100% + 1px); background: var(--rule-strong); }
-.total-card::after { top: 100%; background: var(--surface); }
-
-.total-grid {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(200px, 240px);
-  align-items: end;
-  gap: var(--space-12);
-}
-.total-figure { display: flex; flex-direction: column; gap: var(--space-2); }
-.total-label { color: var(--ink-soft); font-size: var(--text-13); }
-.headline-total {
-  font: 500 var(--text-64) / 1 var(--mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-}
-.headline-cents { font-size: var(--text-28); letter-spacing: -0.01em; color: var(--ink-soft); }
-.total-figure .delta { font-size: var(--text-14); }
-.total-insight {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  max-width: 56ch;
-  padding-bottom: var(--space-1);
-}
-.total-facts {
-  display: flex;
-  flex-direction: column;
-  padding-left: var(--space-6);
-  border-left: 1px dashed var(--rule-strong);
-}
-.total-facts div {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-4);
-  padding: var(--space-2) 0;
-}
-.total-facts div + div { border-top: 1px dashed var(--rule); }
-.total-facts dt { color: var(--ink-soft); font-size: var(--text-13); }
-.total-facts dd { font-size: var(--text-14); }
-.insight-main { font-size: var(--text-20); font-weight: 500; line-height: 1.35; letter-spacing: -0.005em; }
-.insight-detail { color: var(--ink-soft); font-size: var(--text-14); }
 
 /* Two independent columns, so no card stretches to match its neighbor */
 .insights-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
@@ -539,20 +478,6 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 .figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
 .figures dt { color: var(--ink-soft); font-size: var(--text-13); }
 .figures dd { margin-top: var(--space-1); font-size: var(--text-20); font-weight: 500; }
-
-/* Needs review */
-.review-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  border-color: var(--review-border);
-  background: var(--review-wash);
-  color: var(--review-text);
-}
-.review-card h2 { font-size: var(--text-16); color: var(--ink); }
-.review-card p { margin-top: var(--space-1); font-size: var(--text-14); }
-.review-card .button { border-color: var(--review-border); color: var(--ink); }
 
 /* Empty states */
 .empty-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
@@ -977,4 +902,84 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 @media (prefers-reduced-motion: reduce) {
   .chip { transition: none; }
   .chip:active { transform: none; }
+}
+
+/* ============================================================
+   Hero: the month answered in one sentence, with six mini month bars
+   ============================================================ */
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-6) var(--space-12);
+  padding: 20px var(--space-1) var(--space-2);
+}
+.hero-text { flex: 999 1 520px; min-width: 0; }
+.hero-title {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.hero-title strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.hero-line { margin-top: 14px; font-size: 19px; line-height: 1.45; color: var(--ink); }
+.hero-stats { margin-top: 10px; font-size: 13.5px; color: var(--ink-soft); }
+.delta-text { font-weight: 500; font-variant-numeric: tabular-nums; }
+.delta-text.is-up { color: var(--up); }
+.delta-text.is-down { color: var(--down); }
+.skeleton-hero { display: block; width: min(560px, 100%); height: 120px; }
+
+.mini { flex: 1 1 200px; max-width: 240px; }
+.mini-bars { display: flex; align-items: flex-end; gap: var(--space-2); height: 72px; }
+.mini-col {
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.mini-bar {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: var(--radius-bar);
+  background: var(--bar-idle);
+}
+.mini-bar.is-selected { background: var(--ink); }
+.mini-bar.is-partial { border: 1px dashed var(--pace); background: var(--surface); }
+.mini-fill {
+  position: absolute;
+  inset: auto -1px -1px;
+  display: block;
+  border-radius: 0 0 var(--radius-bar) var(--radius-bar);
+  background: var(--ink);
+}
+.mini-labels { display: flex; gap: var(--space-2); margin-top: 6px; }
+.mini-labels span { flex: 1 1 0; text-align: center; font-size: 12.5px; color: var(--ink-muted); }
+.mini-labels .is-selected { color: var(--ink); font-weight: 600; }
+
+/* Needs-a-look strip */
+.review-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) 18px;
+  border: 1px solid var(--review-border);
+  border-radius: 8px;
+  background: var(--review-wash);
+}
+.review-strip p { flex: 1 1 320px; font-size: var(--text-14); line-height: 1.45; color: var(--review-text); }
+.review-strip strong { color: var(--ink); }
+.review-strip .button { border-color: var(--review-button-border); background: var(--surface); font-weight: 600; }
+
+@media (max-width: 640px) {
+  .hero-title { font-size: 34px; }
+  .hero-line { font-size: 17px; }
+  .mini { flex-basis: 100%; }
 }

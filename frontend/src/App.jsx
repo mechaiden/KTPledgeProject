@@ -37,11 +37,11 @@ function summarize(receipts) {
   }
 }
 
-function useReceiptSummary() {
-  const [summary, setSummary] = useState(null)
-  const refresh = useCallback(() => api('/receipts').then((list) => setSummary(summarize(list))).catch(() => {}), [])
-  const update = useCallback((list) => setSummary(summarize(list)), [])
-  return { summary, refresh, update }
+// The full receipt list, shared by the shell (badge), Insights and Receipts
+function useReceiptList() {
+  const [receipts, setReceipts] = useState(null)
+  const refresh = useCallback(() => api('/receipts').then(setReceipts).catch(() => {}), [])
+  return { receipts, summary: summarize(receipts), refresh, update: setReceipts }
 }
 
 function CountBadge({ count, label }) {
@@ -118,7 +118,7 @@ function NavLinks({ view, reviewCount }) {
 export default function App() {
   const { user, isLoading, logout } = useAuth()
   const [route, navigate] = useRoute()
-  const { summary, refresh, update } = useReceiptSummary()
+  const { receipts, summary, refresh, update } = useReceiptList()
   // Handed to the Receipts page once it's on screen: 'picker' opens the file picker, a FileList uploads those files
   const [pendingUpload, setPendingUpload] = useState(null)
   const uploadHandled = useCallback(() => setPendingUpload(null), [])
@@ -157,6 +157,7 @@ export default function App() {
         <main className="content">
           <InsightsPage
             summary={summary}
+            receipts={receipts}
             onReview={() => navigate('receipts/review')}
             onAddReceipts={addReceipts}
           />

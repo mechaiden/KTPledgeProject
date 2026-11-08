@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Plus, RotateCw, Upload } from 'lucide-react'
 import { api } from './api.js'
 import CommandBar from './CommandBar.jsx'
+import Hero, { ReviewStrip } from './Hero.jsx'
 import {
   addMonths,
   currentMonth,
@@ -17,7 +18,9 @@ import {
 
 const ENDPOINTS = {
   categories: (month) => `/insights/categories?month=${month}`,
-  trend: (month) => `/insights/trend?month=${month}&months=6`,
+  // A fixed six-month window ending this month, so the chart doesn't shift on every click;
+  // it only moves when you step back past its left edge
+  trend: (month) => `/insights/trend?month=${month >= addMonths(currentMonth(), -5) ? currentMonth() : month}&months=6`,
   merchants: (month) => `/insights/merchants?month=${month}&limit=5`,
   weekdays: (month) => `/insights/weekdays?month=${month}`,
   receiptSize: (month) => `/insights/receipt-size?month=${month}`,
@@ -81,8 +84,6 @@ function useDelayedFlag(active, ms = 300) {
 }
 
 const sum = (rows, key) => rows.reduce((total, row) => total + row[key], 0)
-const percent = (part, whole) => (whole > 0 ? Math.round((part / whole) * 100) : 0)
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 // Same stacking order every month, so a color sits at the same height across the bars
 const CATEGORY_ORDER = ['Groceries', 'Dining', 'Shopping', 'Transportation', 'Travel', 'Health', 'Entertainment', 'Other']
@@ -153,139 +154,6 @@ function SkeletonChart() {
 
 // ---------- Month switcher ----------
 
-
-// ---------- The month total (the one card with the torn edge) ----------
-
-function insightSentences(month, categories) {
-  const total = sum(categories, 'total')
-  const prevTotal = sum(categories, 'prevTotal')
-  const prevName = formatMonthName(addMonths(month, -1))
-  const isCurrent = month === currentMonth()
-  const diff = total - prevTotal
-
-  let main
-  if (prevTotal === 0) main = `Nothing recorded in ${prevName} to compare with.`
-  else if (isCurrent) {
-    const now = new Date()
-    const day = now.getDate()
-    main = `${plural(day, 'day')} into ${formatMonthName(month)}, you’ve spent ${percent(total, prevTotal)}% of ${prevName}’s total.`
-  } else if (Math.abs(diff) < 0.5) main = `You spent the same as ${prevName}.`
-  else main = `You spent ${formatWholeMoney(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than ${prevName}.`
-
-  // A second line that says where the money is concentrated or what moved
-  let detail = null
-  const top = [...categories].sort((a, b) => b.total - a.total)[0]
-  if (isCurrent || prevTotal === 0) {
-    if (top && total > 0) detail = `${top.category} is ${percent(top.total, total)}% of it${isCurrent ? ' so far' : ''}.`
-  } else {
-    const mover = [...categories].sort((a, b) => Math.abs(b.change) - Math.abs(a.change))[0]
-    if (mover && Math.abs(mover.change) >= 1) {
-      detail = `${mover.category} moved the most, ${mover.change > 0 ? 'up' : 'down'} ${formatWholeMoney(Math.abs(mover.change))}.`
-    }
-  }
-  return { main, detail }
-}
-
-// Days the month's spending is spread over: so far for this month, all of them for past months
-function daysCounted(month) {
-  if (month === currentMonth()) return new Date().getDate()
-  const [year, m] = month.split('-').map(Number)
-  return new Date(year, m, 0).getDate()
-}
-
-function HeadlineDelta({ month, total, prevTotal }) {
-  if (prevTotal === 0) return null
-  const prevName = formatMonthName(addMonths(month, -1))
-  const diff = total - prevTotal
-  const amount = <span className="mono">{formatWholeMoney(Math.abs(diff))}</span>
-  if (month === currentMonth()) {
-    return (
-      <Delta amount={diff}>
-        {amount} {diff < 0 ? `under ${prevName} so far` : `over ${prevName} already`}
-      </Delta>
-    )
-  }
-  return (
-    <Delta amount={diff}>
-      {amount} {diff > 0 ? 'more' : 'less'} than {prevName}
-    </Delta>
-  )
-}
-
-function MoneyHeadline({ amount }) {
-  const [dollars, cents] = formatMoney(amount).split('.')
-  return (
-    <p className="headline-total" data-testid="month-total">
-      <span className="sr-only">{formatMoney(amount)}</span>
-      <span aria-hidden="true">
-        {dollars}
-        <span className="headline-cents">.{cents}</span>
-      </span>
-    </p>
-  )
-}
-
-function TotalCard({ month, categories, receiptSize, error, onRetry }) {
-  const showSkeleton = useDelayedFlag(!categories && !error)
-
-  let body
-  if (error) {
-    body = (
-      <div className="card-error" role="alert">
-        <p>Couldn’t load the month total. {error}</p>
-        <button type="button" className="button" onClick={onRetry}>
-          <RotateCw {...ICON} />
-          Retry
-        </button>
-      </div>
-    )
-  } else if (!categories) {
-    body = showSkeleton ? (
-      <div className="total-grid" aria-hidden="true">
-        <span className="skeleton skeleton-total" />
-        <SkeletonRows rows={2} />
-      </div>
-    ) : null
-  } else {
-    const total = sum(categories, 'total')
-    const prevTotal = sum(categories, 'prevTotal')
-    const { main, detail } = insightSentences(month, categories)
-    const count = receiptSize ? sum(receiptSize, 'count') : null
-    body = (
-      <div className="total-grid">
-        <div className="total-figure">
-          <p className="total-label">Spent in {formatMonthName(month)}</p>
-          <MoneyHeadline amount={total} />
-          <HeadlineDelta month={month} total={total} prevTotal={prevTotal} />
-        </div>
-        <div className="total-insight">
-          <p className="insight-main">{main}</p>
-          {detail && <p className="insight-detail">{detail}</p>}
-        </div>
-        <dl className="total-facts">
-          <div>
-            <dt>Receipts</dt>
-            <dd className="mono">{count ?? '–'}</dd>
-          </div>
-          <div>
-            <dt>Per day</dt>
-            <dd className="mono">{formatMoney(total / daysCounted(month))}</dd>
-          </div>
-          <div>
-            <dt>{formatMonthName(addMonths(month, -1))}</dt>
-            <dd className="mono">{formatMoney(prevTotal)}</dd>
-          </div>
-        </dl>
-      </div>
-    )
-  }
-
-  return (
-    <section className="card total-card" aria-busy={!categories && !error ? true : undefined} aria-label="Month total">
-      {body}
-    </section>
-  )
-}
 
 // ---------- Category bars ----------
 
@@ -549,20 +417,6 @@ function Savings({ year, savings, error, onRetry }) {
 
 // ---------- Needs review ----------
 
-function ReviewCard({ count, onReview }) {
-  if (!count) return null
-  return (
-    <section className="card review-card area-review" aria-label="Receipts to review">
-      <div>
-        <h2>{count === 1 ? '1 receipt needs a look' : `${count} receipts need a look`}</h2>
-        <p>We couldn’t read part of {count === 1 ? 'it' : 'them'}, so these numbers may be off until you check.</p>
-      </div>
-      <button type="button" className="button" onClick={onReview}>
-        Review
-      </button>
-    </section>
-  )
-}
 
 // ---------- Empty states ----------
 
@@ -626,7 +480,7 @@ function EmptyMonth({ month, latestMonth, onSelectMonth }) {
 
 // ---------- Page ----------
 
-export default function InsightsPage({ summary, onReview, onAddReceipts }) {
+export default function InsightsPage({ summary, receipts, onReview, onAddReceipts }) {
   const [month, setMonth] = useState(currentMonth)
   // Filters shared by every section: one category at a time, plus a merchant search
   const [category, setCategory] = useState(null)
@@ -678,17 +532,19 @@ export default function InsightsPage({ summary, onReview, onAddReceipts }) {
       {monthIsEmpty ? (
         <>
           <EmptyMonth month={month} latestMonth={summary?.latestMonth} onSelectMonth={changeMonth} />
-          <ReviewCard count={reviewCount} onReview={onReview} />
+          <ReviewStrip count={reviewCount} onReview={onReview} />
         </>
       ) : (
         <>
-          <TotalCard
-            month={dataMonth}
-            categories={data.categories}
-            receiptSize={data.receiptSize}
-            error={errors.categories}
-            onRetry={() => retry('categories')}
+          <Hero
+            month={month}
+            category={category}
+            receipts={receipts}
+            trend={data.trend}
+            onSelectMonth={changeMonth}
+            {...bind('trend')}
           />
+          <ReviewStrip count={reviewCount} onReview={onReview} />
           <div className="insights-grid">
             <div className="insights-col">
               <CategoryBars month={dataMonth} categories={data.categories} {...bind('categories')} />
@@ -699,7 +555,6 @@ export default function InsightsPage({ summary, onReview, onAddReceipts }) {
               <Trend month={month} trend={data.trend} onSelectMonth={changeMonth} {...bind('trend')} />
               <Weekdays weekdays={data.weekdays} {...bind('weekdays')} />
               <Savings year={month.slice(0, 4)} savings={data.savings} {...bind('savings')} />
-              <ReviewCard count={reviewCount} onReview={onReview} />
             </div>
           </div>
         </>
