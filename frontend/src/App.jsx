@@ -168,8 +168,9 @@ export default function App() {
         </main>
       ) : (
         <ReceiptsPage
-          key={route.reviewOnly ? 'review' : 'all'}
+          key={`${route.reviewOnly ? 'review' : 'all'}-${route.query}`}
           initialReviewOnly={route.reviewOnly}
+          initialQuery={route.query}
           pendingUpload={pendingUpload}
           onPendingUploadHandled={uploadHandled}
           onReceiptsChange={update}
