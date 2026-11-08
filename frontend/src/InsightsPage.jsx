@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Plus, RotateCw, Upload } from 'lucide-react'
 import { api } from './api.js'
 import CommandBar from './CommandBar.jsx'
 import Hero, { ReviewStrip } from './Hero.jsx'
+import MonthlyChart from './MonthlyChart.jsx'
 import {
   addMonths,
   currentMonth,
@@ -85,12 +86,6 @@ function useDelayedFlag(active, ms = 300) {
 
 const sum = (rows, key) => rows.reduce((total, row) => total + row[key], 0)
 
-// Same stacking order every month, so a color sits at the same height across the bars
-const CATEGORY_ORDER = ['Groceries', 'Dining', 'Shopping', 'Transportation', 'Travel', 'Health', 'Entertainment', 'Other']
-const orderOf = (category) => {
-  const i = CATEGORY_ORDER.indexOf(category)
-  return i === -1 ? CATEGORY_ORDER.length : i
-}
 
 const ICON = { size: 16, strokeWidth: 2, 'aria-hidden': true }
 
@@ -207,59 +202,6 @@ function CategoryBars({ month, categories, error, onRetry }) {
           ))}
         </tbody>
       </table>
-    </Card>
-  )
-}
-
-// ---------- Six-month trend ----------
-
-function Trend({ month, trend, error, onRetry, onSelectMonth }) {
-  const months = trend ?? []
-  const max = Math.max(...months.map((m) => m.total), 1)
-  const present = [...new Set(months.flatMap((m) => Object.keys(m.byCategory)))].sort((a, b) => orderOf(a) - orderOf(b))
-
-  return (
-    <Card
-      title="Last six months"
-      lead="Pick a month to see it."
-      className="area-trend"
-      error={error}
-      onRetry={onRetry}
-      loading={!trend && !error}
-      skeleton={<SkeletonChart />}
-    >
-      <div className="trend">
-        {months.map((m) => {
-          const segments = Object.entries(m.byCategory).sort((a, b) => orderOf(a[0]) - orderOf(b[0]))
-          const current = m.month === month
-          return (
-            <button
-              key={m.month}
-              type="button"
-              className="trend-col"
-              aria-pressed={current}
-              aria-label={`${formatMonth(m.month)}: ${formatMoney(m.total)}`}
-              onClick={() => onSelectMonth(m.month)}
-            >
-              <span className="trend-total mono" aria-hidden="true">{m.total > 0 ? formatWholeMoney(m.total) : '–'}</span>
-              <span className="trend-stack" style={{ height: `${(m.total / max) * 100}%` }} aria-hidden="true">
-                {segments.map(([category, amount]) => (
-                  <span key={category} data-category={category} style={{ flexGrow: amount }} />
-                ))}
-              </span>
-              <span className="trend-month" aria-hidden="true">{formatShortMonth(m.month)}</span>
-            </button>
-          )
-        })}
-      </div>
-      <ul className="legend" aria-label="Colors">
-        {present.map((category) => (
-          <li key={category}>
-            <span className="swatch" data-category={category} />
-            {category}
-          </li>
-        ))}
-      </ul>
     </Card>
   )
 }
@@ -485,6 +427,8 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
   // Filters shared by every section: one category at a time, plus a merchant search
   const [category, setCategory] = useState(null)
   const [query, setQuery] = useState('')
+  // A weekday picked in the findings, highlighted in the day-by-day chart (Monday = 0)
+  const [weekday, setWeekday] = useState(null)
   const { data, dataMonth, errors, retry } = useInsights(month)
 
   const changeMonth = useCallback((next) => {
@@ -502,6 +446,7 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
   const clearFilters = useCallback(() => {
     setCategory(null)
     setQuery('')
+    setWeekday(null)
   }, [])
 
   const reviewCount = summary?.reviewCount ?? 0
@@ -545,6 +490,15 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
             {...bind('trend')}
           />
           <ReviewStrip count={reviewCount} onReview={onReview} />
+          <MonthlyChart
+            trend={data.trend}
+            month={month}
+            category={category}
+            receipts={receipts}
+            weekday={weekday}
+            onSelectMonth={changeMonth}
+            {...bind('trend')}
+          />
           <div className="insights-grid">
             <div className="insights-col">
               <CategoryBars month={dataMonth} categories={data.categories} {...bind('categories')} />
@@ -552,7 +506,6 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
               <ReceiptSize sizes={data.receiptSize} {...bind('receiptSize')} />
             </div>
             <div className="insights-col">
-              <Trend month={month} trend={data.trend} onSelectMonth={changeMonth} {...bind('trend')} />
               <Weekdays weekdays={data.weekdays} {...bind('weekdays')} />
               <Savings year={month.slice(0, 4)} savings={data.savings} {...bind('savings')} />
             </div>

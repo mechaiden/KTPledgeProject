@@ -380,54 +380,6 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 .cat-table .num { width: 88px; }
 .cat-change { width: 76px !important; }
 
-/* Six-month stacked trend */
-.trend { display: flex; align-items: stretch; gap: var(--space-3); height: 200px; }
-.trend-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-bar);
-  background: none;
-  color: var(--ink-soft);
-}
-.trend-total { font-size: var(--text-12); }
-.trend-stack {
-  width: 100%;
-  max-width: 48px;
-  min-height: 2px;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 1px;
-  border-radius: var(--radius-bar) var(--radius-bar) 0 0;
-  overflow: hidden;
-}
-.trend-stack span { flex-basis: 0; min-height: 1px; }
-.trend-month { font-size: var(--text-13); }
-.trend-col[aria-pressed='true'] { color: var(--ink); }
-.trend-col[aria-pressed='true'] .trend-month { font-weight: 600; }
-@media (hover: hover) {
-  .trend-col:hover { color: var(--ink); }
-}
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  margin: var(--space-4) 0 0;
-  padding: var(--space-3) 0 0;
-  border-top: 1px solid var(--rule);
-  list-style: none;
-  font-size: var(--text-12);
-  color: var(--ink-soft);
-}
-.legend li { display: flex; align-items: center; gap: var(--space-2); }
-
 /* Receipt-style tables: mono columns, dashed dividers */
 .ledger-table { width: 100%; font-size: var(--text-14); }
 .ledger-table thead th {
@@ -982,4 +934,95 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
   .hero-title { font-size: 34px; }
   .hero-line { font-size: 17px; }
   .mini { flex-basis: 100%; }
+}
+
+/* ============================================================
+   Panels and the monthly spending chart
+   ============================================================ */
+.panel {
+  padding: 22px var(--space-6) 20px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.panel-title { margin: 0 0 14px; font-size: var(--text-15); font-weight: 600; }
+
+.months { display: flex; align-items: flex-end; gap: var(--space-1); height: 172px; overflow: hidden; }
+.month-col {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  height: 100%;
+  padding: 6px 6px 0;
+  border: 2px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  cursor: pointer;
+}
+.month-col[aria-pressed='true'] { border-color: var(--ink); }
+.month-total { font-size: 13.5px; text-align: left; color: var(--ink-muted); }
+.month-col[aria-pressed='true'] .month-total { color: var(--ink); font-weight: 600; }
+.month-stack { display: flex; flex-direction: column; width: 100%; }
+.month-ghost {
+  display: block;
+  overflow: hidden;
+  padding: 2px var(--space-1);
+  border: 1px dashed var(--pace);
+  border-bottom: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-12);
+  text-align: left;
+}
+.seg {
+  display: block;
+  border-top: 1px solid color-mix(in srgb, var(--surface) 70%, transparent);
+  background: color-mix(in srgb, var(--cat) 38%, var(--surface));
+  transition: opacity var(--duration) ease-out;
+}
+.seg.is-selected, .seg.is-focus { background: var(--cat); }
+.seg.is-faded { opacity: 0.15; }
+.month-labels { display: flex; gap: var(--space-1); border-top: 1px solid var(--ink); }
+.month-labels > span {
+  flex: 1 1 0;
+  min-height: 30px;
+  padding: var(--space-2) var(--space-2) 0;
+  border: 2px solid transparent;
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+  color: var(--ink-muted);
+  font-size: var(--text-13);
+}
+.month-labels > .is-selected { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.connector { display: block; width: 100%; height: 28px; }
+.connector polygon { fill: var(--wash); }
+.days {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 70px;
+  padding: 0 2px;
+  background: var(--wash);
+}
+.day { display: block; flex: 1 1 0; background: var(--bar-idle); }
+.day.is-soft { background: var(--ink-muted); }
+.day.is-ink { background: var(--ink); }
+.day-ticks { position: relative; height: 20px; margin-top: 6px; color: var(--ink-soft); font-size: 12.5px; }
+.day-ticks span { position: absolute; }
+.days-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  color: var(--ink-soft);
+  font-size: var(--text-13);
+}
+@media (max-width: 640px) {
+  .panel { padding: 18px var(--space-4); }
+  .month-col { padding: 4px 2px 0; }
+  .month-total { font-size: 11px; }
+  .month-ghost { font-size: 0; } /* the dashed outline alone; no room for the label */
 }
