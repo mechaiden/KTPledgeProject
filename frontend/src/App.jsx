@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChartColumn, LogOut, Plus, ReceiptText } from 'lucide-react'
 import { api } from './api.js'
+import AddSheet from './AddSheet.jsx'
 import BoxMark from './BoxMark.jsx'
 import { useAuth } from './auth.jsx'
 import { monthOf } from './format.js'
@@ -128,6 +129,8 @@ export default function App() {
   const uploadHandled = useCallback(() => setPendingUpload(null), [])
   // Review: { queue: true } walks every receipt that needs a look; { id } opens one receipt
   const [review, setReview] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const closeAdd = useCallback(() => setAdding(false), [])
   const closeReview = useCallback(() => setReview(null), [])
   const [toast, setToast] = useState(null)
   useEffect(() => {
@@ -143,8 +146,14 @@ export default function App() {
   if (isLoading) return null
   if (!user) return <LoginPage />
 
+  // With files (dropped on Insights or picked in the sheet) upload them; without, open the sheet
   function addReceipts(files) {
-    setPendingUpload(files?.length ? files : 'picker')
+    if (!files?.length) {
+      setAdding(true)
+      return
+    }
+    setAdding(false)
+    setPendingUpload(files)
     navigate('receipts')
   }
 
@@ -212,6 +221,7 @@ export default function App() {
           onDeleted={handleDeleted}
         />
       )}
+      {adding && <AddSheet onFiles={addReceipts} onClose={closeAdd} />}
       {toast && <div className="toast" role="status">{toast}</div>}
 
       <nav className="tabbar" aria-label="Main">

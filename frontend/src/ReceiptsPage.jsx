@@ -40,12 +40,12 @@ function StatusChip({ status }) {
   return <span className="status is-filed"><span className="status-dot" />Filed</span>
 }
 
-function ProcessingRow({ receipt }) {
+function ProcessingRow({ name }) {
   return (
     <div className="rrow is-processing" role="status">
       <span className="rrow-main">
         <span className="rrow-merchant">Reading receipt…</span>
-        <span className="rrow-items">{receipt.fileName ?? 'Usually a few seconds'}</span>
+        <span className="rrow-items">{name ? `${name} · usually a few seconds` : 'Usually a few seconds'}</span>
       </span>
       <span className="scan-track" aria-hidden="true"><span className="scan-bar" /></span>
     </div>
@@ -80,6 +80,8 @@ export default function ReceiptsPage({ receipts, initialReviewOnly = false, init
   const [filedElsewhere, setFiledElsewhere] = useState([])
   const fileInputRef = useRef(null)
   const uploadingIds = useRef(new Set())
+  // File names for uploads still being read, shown on their processing rows
+  const [fileNames, setFileNames] = useState({})
 
   const refresh = useCallback(
     () =>
@@ -117,6 +119,7 @@ export default function ReceiptsPage({ receipts, initialReviewOnly = false, init
       try {
         const created = await api('/receipts', { method: 'POST', body: form })
         uploadingIds.current.add(created.id)
+        setFileNames((prev) => ({ ...prev, [created.id]: file.name }))
         setReceipts((prev) => [created, ...prev])
       } catch (err) {
         errors.push(`${file.name}: ${err.message}`)
@@ -141,8 +144,7 @@ export default function ReceiptsPage({ receipts, initialReviewOnly = false, init
     }
     if (handledUpload.current === pendingUpload) return
     handledUpload.current = pendingUpload
-    if (pendingUpload === 'picker') fileInputRef.current?.click()
-    else upload(pendingUpload)
+    upload(pendingUpload)
     onPendingUploadHandled?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- upload only reads setters and refs
   }, [pendingUpload, onPendingUploadHandled])
@@ -289,7 +291,7 @@ export default function ReceiptsPage({ receipts, initialReviewOnly = false, init
             <p className={`rlist-empty ${loadError ? 'error' : 'muted'}`}>{loadError || 'Loading…'}</p>
           ) : (
             <>
-              {processing.map((r) => <ProcessingRow key={r.id} receipt={r} />)}
+              {processing.map((r) => <ProcessingRow key={r.id} name={fileNames[r.id]} />)}
               {groups.length === 0 && processing.length === 0 && <p className="rlist-empty">{emptyTitle}</p>}
               {groups.map((g) => (
                 <div key={g.date ?? 'none'} role="group" aria-label={dayLabel(g.date)}>
