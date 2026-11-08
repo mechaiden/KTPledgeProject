@@ -1208,3 +1208,41 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 @media (prefers-reduced-motion: reduce) {
   .sheet { animation: toast-fade 150ms linear both; }
 }
+
+/* ============================================================
+   Motion: sections fade up on load and on every month or category change
+   (they remount with a new key), daily bars grow from the baseline,
+   review slides between receipts. Transform and opacity only.
+   ============================================================ */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes grow { from { transform: scaleY(0.05); } }
+@keyframes slide { from { opacity: 0; transform: translateX(14px); } }
+@keyframes fade { from { opacity: 0; } }
+.hero-title, .hero-line, .hero-stats, .mini, .review-strip, .monthly, .finding, .year-line {
+  animation: rise 320ms var(--ease) both;
+}
+.hero-line { animation-delay: 60ms; }
+.hero-stats, .mini { animation-delay: 120ms; }
+.review-strip { animation-delay: 160ms; }
+.monthly { animation-delay: 120ms; }
+.finding:nth-child(1) { animation-delay: 180ms; }
+.finding:nth-child(2) { animation-delay: 240ms; }
+.finding:nth-child(3) { animation-delay: 300ms; }
+.finding:nth-child(4) { animation-delay: 360ms; }
+.year-line { animation-delay: 360ms; }
+.day, .week-bar { transform-origin: bottom; animation: grow 420ms var(--ease) both; }
+.day { animation-delay: calc(var(--d, 0) * 10ms + 120ms); }
+.week-bar { animation-delay: 240ms; }
+.slide-in { animation: slide 220ms var(--ease) both; }
+.review-done { animation: rise 320ms var(--ease) both; }
+.button:active:not(:disabled), .chip:active, .grid-row:active, .rrow:active { transform: scale(0.97); }
+.grid-row, .rrow { transition: background-color 120ms ease-out, transform 120ms var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .hero-title, .hero-line, .hero-stats, .mini, .review-strip, .monthly, .finding, .year-line,
+  .slide-in, .review-done, .account-menu {
+    animation: fade 150ms linear both;
+    animation-delay: 0ms;
+  }
+  .day, .week-bar { animation: none; }
+  .button:active:not(:disabled), .chip:active, .grid-row:active, .rrow:active { transform: none; }
+}

@@ -101,7 +101,7 @@ export default function MonthlyChart({ trend, month, category, receipts, weekday
         {days.map((v, i) => {
           const wd = weekdayIndex(dateOf(month, i + 1))
           const tone = weekday != null ? (wd === weekday ? 'is-ink' : '') : i === bigIndex && hasSpend ? 'is-ink' : 'is-soft'
-          return <span key={i} className={`day ${tone}`} style={{ height: v ? Math.max(2, (v / dayMax) * 64) : 0 }} />
+          return <span key={i} className={`day ${tone}`} style={{ height: v ? Math.max(2, (v / dayMax) * 64) : 0, '--d': i }} />
         })}
       </div>
       <div className="day-ticks mono" aria-hidden="true">

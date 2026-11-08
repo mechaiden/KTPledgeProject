@@ -162,6 +162,9 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
 
   const monthRow = data.trend?.find((row) => row.month === month)
   const monthIsEmpty = data.trend && !errors.trend && (monthRow?.total ?? 0) === 0
+  // Remounting on a month or category change replays the fade-up, so the change reads as new content.
+  // The findings remount only on month change, so a clicked category row keeps keyboard focus.
+  const motionKey = `${month}-${category ?? 'all'}`
   const shared = { month, receipts, category, query, weekday, onCategory: setCategory, onWeekday: setWeekday, onOpenMerchant }
 
   return (
@@ -184,6 +187,7 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
       ) : (
         <>
           <Hero
+            key={`hero-${motionKey}`}
             month={month}
             category={category}
             receipts={receipts}
@@ -194,6 +198,7 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
           />
           <ReviewStrip count={reviewCount} onReview={onReview} />
           <MonthlyChart
+            key={`chart-${motionKey}`}
             trend={data.trend}
             month={month}
             category={category}
@@ -203,8 +208,8 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
             onRetry={() => retry('trend')}
             onSelectMonth={changeMonth}
           />
-          {receipts && <Findings {...shared} />}
-          <YearSoFar year={month.slice(0, 4)} savings={data.savings} />
+          {receipts && <Findings key={`find-${month}`} {...shared} />}
+          <YearSoFar key={`year-${month}`} year={month.slice(0, 4)} savings={data.savings} />
         </>
       )}
     </div>

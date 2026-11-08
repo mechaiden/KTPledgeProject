@@ -132,7 +132,7 @@ function Editor({ receipt, inQueue, onConfirm, onSkip, onDelete }) {
   const firstFlag = flags.all ? -1 : flags.items.indexOf(true)
 
   return (
-    <div className="review-body">
+    <div className="review-body slide-in">
       <div className="review-photo">
         <div className="review-photo-bar">
           <span>Original photo</span>
