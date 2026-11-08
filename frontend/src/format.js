@@ -27,8 +27,26 @@ export function addMonths(month, n) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// "2026-10" -> "Oct"
+export function formatShortMonth(month) {
+  const [year, m] = month.split('-').map(Number)
+  return new Date(year, m - 1, 1).toLocaleDateString('en-US', { month: 'short' })
+}
+
 // "2026-10" -> "October 2026"
 export function formatMonth(month) {
   const [year, m] = month.split('-').map(Number)
   return new Date(year, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+// "2026-10" -> "October"
+export function formatMonthName(month) {
+  const [year, m] = month.split('-').map(Number)
+  return new Date(year, m - 1, 1).toLocaleDateString('en-US', { month: 'long' })
+}
+
+// Whole dollars, for chart labels where cents are noise: 1234.5 -> "$1,235"
+const wholeMoney = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+export function formatWholeMoney(amount) {
+  return amount == null ? '–' : wholeMoney.format(amount)
 }

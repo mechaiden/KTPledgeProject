@@ -9,3 +9,6 @@ __pycache__/
 .DS_Store
 .env
 *.db
+
+# Playwright MCP screenshots and logs
+.playwright-mcp/

@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shoebox — final MVP prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F6F8}
+a{color:#14161A}a:hover{color:#14161A}
+.n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+button,input,select{font-family:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #14161A;outline-offset:2px}
+#sb-root:focus{outline:none}
+.press{transition:transform 120ms cubic-bezier(.23,1,.32,1)}
+.press:active{transform:scale(.97)}
+.row{transition:background-color 120ms ease-out}
+.chev{transition:transform 200ms cubic-bezier(.23,1,.32,1)}
+.seg{transition:opacity 200ms ease-out}
+.hatch{background-image:repeating-linear-gradient(135deg,currentColor 0 1.5px,transparent 1.5px 5px)}
+@media (hover:hover){.row:hover{background:#F7F8FA}.mcol:hover .seg{opacity:1}}
+@keyframes riseA{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@keyframes riseB{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@keyframes growA{from{transform:scaleY(.05)}to{transform:scaleY(1)}}
+@keyframes growB{from{transform:scaleY(.05)}to{transform:scaleY(1)}}
+@keyframes sheet{from{transform:translateY(12px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+@keyframes slide{from{transform:translateX(14px);opacity:0}to{transform:none;opacity:1}}
+@keyframes scan{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+.ra{animation:riseA 320ms cubic-bezier(.23,1,.32,1) both}
+.rb{animation:riseB 320ms cubic-bezier(.23,1,.32,1) both}
+.ga{transform-origin:bottom;animation:growA 420ms cubic-bezier(.23,1,.32,1) both}
+.gb{transform-origin:bottom;animation:growB 420ms cubic-bezier(.23,1,.32,1) both}
+.sheet{animation:sheet 240ms cubic-bezier(.23,1,.32,1) both}
+.slide{animation:slide 220ms cubic-bezier(.23,1,.32,1) both}
+.scan{animation:scan 1.1s linear infinite}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:150ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:150ms!important}.ga,.gb{animation:none}}
+</style>
+</helmet>
+<div id="sb-root" tabIndex="-1" onKeyDown="{{onKey}}" style="font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #14161A; background: #F5F6F8; min-height: 1600px; font-size: 15px; position: relative">
+
+  <!-- Top bar -->
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E3E6EA; position: sticky; top: 0; z-index: 10">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 28px; min-height: 64px; flex-wrap: wrap; position: relative">
+      <div style="display: flex; align-items: center; gap: 9px">
+        <svg aria-hidden="true" width="22" height="19" viewBox="0 0 26 22" fill="none"><rect x="1" y="7" width="24" height="14" rx="1.5" stroke="#14161A" stroke-width="2.2"/><path d="M0 4.5h26" stroke="#14161A" stroke-width="2.2"/></svg>
+        <span style="font-weight: 700; font-size: 17px; letter-spacing: -0.01em">Shoebox</span>
+      </div>
+      <nav aria-label="Main" style="display: flex; gap: 22px; align-self: stretch; flex: 1 1 auto">
+        <sc-for list="{{tabsTop}}" as="tt" hint-placeholder-count="2">
+          <button type="button" onClick="{{tt.go}}" aria-current="{{tt.current}}" style="font-size: 14px; font-weight: {{tt.weight}}; color: {{tt.color}}; background: none; border: 0; border-bottom: 2px solid {{tt.line}}; padding: 0 2px; cursor: pointer; display: flex; align-items: center; gap: 8px">
+            {{tt.label}}<sc-if value="{{tt.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="n" style="font-size: 12.5px; color: #5C4632; background: #FFF6EE; border: 1px solid #F4DCC6; border-radius: 9px; padding: 0 6px; line-height: 16px">{{tt.badge}}</span></sc-if>
+          </button>
+        </sc-for>
+      </nav>
+      <button type="button" class="press" onClick="{{openAdd}}" style="font-size: 14px; font-weight: 600; color: #FFFFFF; background: #14161A; border: 0; border-radius: 6px; min-height: 42px; padding: 0 16px; cursor: pointer; display: flex; align-items: center; gap: 8px"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add receipts</button>
+      <button type="button" class="press" onClick="{{toggleAcct}}" aria-haspopup="menu" aria-expanded="{{acctExpanded}}" aria-label="Account menu" style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid {{acctBorder}}; background: {{acctBg}}; cursor: pointer; font-size: 13.5px; font-weight: 600; color: #14161A">RT</button>
+      <sc-if value="{{acctOpen}}" hint-placeholder-val="{{ false }}">
+        <div class="ra" role="menu" aria-label="Account" style="position: absolute; right: 24px; top: 58px; width: 300px; background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 10px; box-shadow: 0 12px 32px rgba(20,22,26,0.14); z-index: 12; overflow: hidden">
+          <div style="padding: 16px 16px 14px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #EEF0F3">
+            <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 20px; background: #EEF0F3; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px">RT</span>
+            <span style="min-width: 0"><span style="display: block; font-size: 13px; color: #4A505A">Signed in as</span><span style="display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">rosa@rosastacos.com</span></span>
+          </div>
+          <div style="padding: 6px">
+            <button type="button" role="menuitem" class="row" onClick="{{openShortcuts}}" style="width: 100%; text-align: left; border: 0; background: transparent; border-radius: 6px; min-height: 44px; padding: 0 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 15px; color: #14161A">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Keyboard shortcuts<kbd class="n" style="margin-left: auto; font-size: 12px; border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 6px; color: #4A505A">?</kbd></button>
+            <button type="button" role="menuitem" class="row" onClick="{{signOut}}" style="width: 100%; text-align: left; border: 0; background: transparent; border-radius: 6px; min-height: 44px; padding: 0 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 15px; color: #14161A">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Sign out</button>
+          </div>
+          <p style="margin: 0; padding: 12px 16px 14px; border-top: 1px solid #EEF0F3; font-size: 13px; color: #4A505A; line-height: 1.45">Your receipts are read on Shoebox's own server, not sent to an outside AI service.</p>
+        </div>
+      </sc-if>
+    </div>
+  </header>
+
+  <!-- ================= INSIGHTS ================= -->
+  <sc-if value="{{isInsights}}" hint-placeholder-val="{{ true }}">
+  <main style="max-width: 1120px; margin: 0 auto; padding: 24px 24px 72px; display: flex; flex-direction: column; gap: 20px">
+
+    <!-- Command bar -->
+    <section aria-label="Filters" style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 14px">
+        <div style="display: flex; align-items: center; gap: 2px">
+          <button type="button" class="press" onClick="{{prevMonth}}" disabled="{{atFirst}}" aria-label="Previous month" style="width: 36px; height: 36px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: #14161A; opacity: {{prevOp}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span style="font-size: 16px; font-weight: 600; min-width: 140px; text-align: center">{{monthLabel}} 2026</span>
+          <button type="button" class="press" onClick="{{nextMonth}}" disabled="{{atLast}}" aria-label="Next month" style="width: 36px; height: 36px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: #14161A; opacity: {{nextOp}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+        </div>
+        <label style="flex: 1 1 260px; max-width: 380px; display: flex; align-items: center; gap: 8px; border: 1px solid #D5D9DF; border-radius: 6px; padding: 0 8px 0 12px; min-height: 40px; color: #4A505A">
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Filter by merchant</span>
+          <input id="sb-search" type="search" value="{{query}}" onChange="{{onQuery}}" placeholder="Filter by merchant" style="flex: 1 1 auto; min-width: 0; border: 0; outline: none; font-size: 14px; color: #14161A; background: transparent"/>
+          <kbd class="n" style="font-size: 12.5px; border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 6px; color: #4A505A">/</kbd>
+        </label>
+        <div class="n" aria-hidden="true" style="margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #4A505A; flex-wrap: wrap">
+          <span><kbd style="border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 5px">←</kbd> <kbd style="border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 5px">→</kbd> month</span>
+          <span><kbd style="border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 5px">1</kbd>–<kbd style="border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 5px">8</kbd> category</span>
+          <span><kbd style="border: 1px solid #D5D9DF; border-radius: 4px; padding: 1px 5px">Esc</kbd> clear</span>
+        </div>
+      </div>
+      <div role="toolbar" aria-label="Category filter" style="display: flex; gap: 4px; padding: 8px 10px; border-top: 1px solid #EEF0F3; overflow-x: auto">
+        <sc-for list="{{chips}}" as="cp" hint-placeholder-count="9">
+          <button type="button" class="press" onClick="{{cp.pick}}" aria-pressed="{{cp.pressed}}" style="flex: 0 0 auto; font-size: 13px; font-weight: {{cp.weight}}; color: {{cp.color}}; background: {{cp.bg}}; border: 1px solid {{cp.border}}; border-radius: 6px; min-height: 38px; padding: 0 12px; cursor: pointer; display: flex; align-items: center; gap: 8px">
+            <sc-if value="{{cp.hasDot}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="width: 9px; height: 9px; border-radius: 2px; background: {{cp.dot}}"></span></sc-if>{{cp.label}}
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Hero -->
+    <section aria-label="Month summary" style="display: flex; flex-wrap: wrap; gap: 24px 48px; align-items: flex-end; padding: 20px 4px 8px">
+      <div style="flex: 999 1 520px; min-width: 0">
+        <h1 class="{{animA}}" style="margin: 0; font-size: 46px; font-weight: 400; line-height: 1.12; letter-spacing: -0.025em">{{heroPre}}<strong style="font-weight: 600">{{heroAmount}}</strong>{{heroPost}}</h1>
+        <p class="{{animA}}" style="margin: 14px 0 0; font-size: 19px; line-height: 1.45; color: #2C3038; animation-delay: 70ms">{{heroLine}}<span style="color: {{heroDeltaColor}}; font-weight: 500">{{heroDelta}}</span>{{heroLineEnd}}</p>
+        <p class="{{animA}} n" style="margin: 10px 0 0; font-size: 13.5px; color: #4A505A; animation-delay: 130ms">{{heroStats}}</p>
+      </div>
+      <div style="flex: 1 1 200px; max-width: 240px">
+        <div role="img" aria-label="Six-month totals" style="display: flex; align-items: flex-end; gap: 8px; height: 72px">
+          <sc-for list="{{mini}}" as="mi" hint-placeholder-count="6">
+            <button type="button" onClick="{{mi.pick}}" aria-label="{{mi.aria}}" style="flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; background: none; border: 0; padding: 0; cursor: pointer">
+              <span style="display: block; width: 100%; height: {{mi.h}}; background: {{mi.bg}}; border: {{mi.border}}; box-sizing: border-box; border-radius: 2px; position: relative">
+                <span style="position: absolute; left: -1px; right: -1px; bottom: -1px; height: {{mi.fill}}; background: #14161A; border-radius: 0 0 2px 2px; display: block"></span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <div class="n" style="display: flex; gap: 8px; margin-top: 6px">
+          <sc-for list="{{mini}}" as="mi" hint-placeholder-count="6"><span style="flex: 1 1 0; text-align: center; font-size: 12.5px; color: {{mi.lc}}; font-weight: {{mi.lw}}">{{mi.l}}</span></sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- Needs a look -->
+    <sc-if value="{{hasQueue}}" hint-placeholder-val="{{ true }}">
+      <section aria-label="Receipts that need a look" class="ra" style="background: #FFF6EE; border: 1px solid #F4DCC6; border-radius: 8px; padding: 12px 12px 12px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; animation-delay: 160ms">
+        <p style="margin: 0; flex: 1 1 320px; font-size: 14px; color: #5C4632; line-height: 1.45"><strong style="color: #14161A">{{queueHeadline}}</strong> {{queueSub}}</p>
+        <button type="button" class="press" onClick="{{startReview}}" style="font-size: 14px; font-weight: 600; color: #14161A; background: #FFFFFF; border: 1px solid #E3D0BE; border-radius: 6px; min-height: 42px; padding: 0 16px; cursor: pointer; display: flex; align-items: center; gap: 8px">Review<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </section>
+    </sc-if>
+
+    <!-- Monthly spine -->
+    <section aria-labelledby="ms-h" style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px; padding: 22px 24px 20px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px">
+        <h2 id="ms-h" style="margin: 0; font-size: 15px; font-weight: 600">Monthly spending</h2>
+        <span style="font-size: 13.5px; color: #4A505A">Jun – Nov 2026. Pick a month, or use the arrow keys.</span>
+      </div>
+      <div style="display: flex; align-items: flex-end; gap: 4px; height: 172px; overflow: hidden">
+        <sc-for list="{{spine}}" as="sp" hint-placeholder-count="6">
+          <button type="button" class="mcol" onClick="{{sp.pick}}" aria-label="{{sp.aria}}" aria-pressed="{{sp.pressed}}" style="flex: 1 1 0; height: 100%; background: none; border: 2px solid {{sp.outline}}; border-bottom: 0; border-radius: 6px 6px 0 0; padding: 6px 6px 0; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; box-sizing: border-box">
+            <span class="n" style="font-size: 13.5px; text-align: left; color: {{sp.lc}}; font-weight: {{sp.lw}}">{{sp.totalStr}}</span>
+            <span style="display: flex; flex-direction: column; width: 100%">
+              <span style="display: block; height: {{sp.ghost}}; border: 1px dashed #A9AFB8; border-bottom: 0; box-sizing: border-box; font-size: 12px; color: #4A505A; text-align: left; padding: 2px 4px; overflow: hidden" class="n">{{sp.ghostLabel}}</span>
+              <sc-for list="{{sp.segs}}" as="sg" hint-placeholder-count="5">
+                <span class="seg" style="display: block; height: {{sg.h}}; background: {{sg.c}}; opacity: {{sg.op}}; border-top: 1px solid rgba(255,255,255,0.7)"></span>
+              </sc-for>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 4px; border-top: 1px solid #14161A">
+        <sc-for list="{{spine}}" as="sp" hint-placeholder-count="6">
+          <span style="flex: 1 1 0; padding: 8px 8px 0; font-size: 13px; color: {{sp.lc}}; font-weight: {{sp.lw}}; border: 2px solid {{sp.outline}}; border-top: 0; border-radius: 0 0 6px 6px; min-height: 30px; box-sizing: border-box">{{sp.label}}</span>
+        </sc-for>
+      </div>
+      <svg aria-hidden="true" viewBox="0 0 100 10" preserveAspectRatio="none" style="display: block; width: 100%; height: 26px"><polygon points="{{connPoints}}" fill="#EEF0F3"></polygon></svg>
+      <div role="img" aria-label="{{dailyAria}}" style="display: flex; align-items: flex-end; gap: 2px; height: 70px; background: #EEF0F3; padding: 0 2px; box-sizing: border-box">
+        <sc-for list="{{daily}}" as="dy" hint-placeholder-count="30">
+          <span class="{{growAnim}}" style="flex: 1 1 0; display: block; height: {{dy.h}}; background: {{dy.c}}; animation-delay: {{dy.delay}}"></span>
+        </sc-for>
+      </div>
+      <div class="n" style="position: relative; height: 20px; margin-top: 6px; font-size: 12.5px; color: #4A505A">
+        <sc-for list="{{dayTicks}}" as="tk" hint-placeholder-count="5"><span style="position: absolute; left: {{tk.left}}">{{tk.label}}</span></sc-for>
+      </div>
+      <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px; color: #4A505A; margin-top: 4px">
+        <span>{{monthLabel}}, day by day</span><span>{{biggestDay}}</span>
+      </div>
+    </section>
+
+    <!-- Findings: always open, the sentence is the headline -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 20px">
+
+      <section aria-labelledby="f1" style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px; padding: 22px 24px">
+        <h2 id="f1" class="{{animA}}" style="margin: 0; font-size: 19px; font-weight: 400; line-height: 1.35">{{a1.pre}}<strong style="font-weight: 600">{{a1.b1}}</strong>{{a1.mid}}<strong style="font-weight: 600">{{a1.b2}}</strong>{{a1.post}}</h2>
+        <p style="margin: 4px 0 16px; font-size: 13.5px; color: #4A505A">{{catNote}}</p>
+        <div style="display: grid; grid-template-columns: minmax(110px, 1.2fr) minmax(60px, 1.6fr) 90px 48px 66px; gap: 10px; font-size: 13.5px; color: #4A505A; padding-bottom: 8px; border-bottom: 1px solid #E3E6EA">
+          <span>Category</span><span></span><span style="text-align: right">Spent</span><span style="text-align: right">Share</span><span style="text-align: right">{{vsLabel}}</span>
+        </div>
+        <sc-for list="{{catRows}}" as="c" hint-placeholder-count="5">
+          <button type="button" class="row" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="width: 100%; text-align: left; border: 0; border-bottom: 1px solid #EEF0F3; background: {{c.bg}}; cursor: pointer; display: grid; grid-template-columns: minmax(110px, 1.2fr) minmax(60px, 1.6fr) 90px 48px 66px; gap: 10px; align-items: center; min-height: 44px; color: #14161A; padding: 0">
+            <span style="display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: {{c.fw2}}; box-shadow: inset 3px 0 0 {{c.mark}}; padding-left: 8px; margin-left: -8px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: {{c.color}}"></span>{{c.name}}</span>
+            <span aria-hidden="true" style="height: 7px; background: #F0F1F4; border-radius: 4px; display: flex; overflow: hidden"><span style="display: block; width: {{c.fw}}; background: {{c.color}}"></span><span class="hatch" style="display: block; width: {{c.ww}}; color: {{c.color}}"></span></span>
+            <span class="n" style="text-align: right">{{c.amt}}</span>
+            <span class="n" style="text-align: right; color: #4A505A">{{c.share}}</span>
+            <span class="n" style="text-align: right; font-size: 13.5px; color: {{c.dc}}">{{c.delta}}</span>
+          </button>
+        </sc-for>
+      </section>
+
+      <section aria-labelledby="f2" style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px; padding: 22px 24px">
+        <h2 id="f2" class="{{animA}}" style="margin: 0; font-size: 19px; font-weight: 400; line-height: 1.35">{{a2.pre}}<strong style="font-weight: 600">{{a2.b1}}</strong>{{a2.mid}}<strong style="font-weight: 600">{{a2.b2}}</strong>{{a2.post}}</h2>
+        <p style="margin: 4px 0 16px; font-size: 13.5px; color: #4A505A">{{merchHint}}</p>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 54px 84px 92px 16px; gap: 10px; font-size: 13.5px; color: #4A505A; padding-bottom: 8px; border-bottom: 1px solid #E3E6EA"><span>Merchant</span><span style="text-align: right">Visits</span><span style="text-align: right">Per visit</span><span style="text-align: right">Total</span><span></span></div>
+        <sc-for list="{{merchants}}" as="m" hint-placeholder-count="5">
+          <button type="button" class="row" onClick="{{m.open}}" disabled="{{m.disabled}}" aria-label="{{m.aria}}" style="width: 100%; text-align: left; border: 0; border-bottom: 1px solid #EEF0F3; background: transparent; cursor: {{m.cursor}}; display: grid; grid-template-columns: minmax(0, 1fr) 54px 84px 92px 16px; gap: 10px; align-items: center; min-height: 44px; color: #14161A; padding: 0">
+            <span style="display: flex; align-items: center; gap: 8px; font-weight: 500; min-width: 0"><span aria-hidden="true" style="flex: 0 0 auto; width: 8px; height: 8px; border-radius: 2px; background: {{m.color}}"></span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{m.name}}</span></span>
+            <span class="n" style="text-align: right">{{m.visits}}</span><span class="n" style="text-align: right; color: #4A505A">{{m.avg}}</span><span class="n" style="text-align: right">{{m.total}}</span>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A909C" stroke-width="2" stroke-linecap="round" style="opacity: {{m.arrowOp}}"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </sc-for>
+        <p style="margin: 10px 0 0; font-size: 13.5px; color: #4A505A">{{merchNote}}</p>
+      </section>
+
+      <section aria-labelledby="f3" style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px; padding: 22px 24px">
+        <h2 id="f3" class="{{animA}}" style="margin: 0; font-size: 19px; font-weight: 400; line-height: 1.35">{{a3.pre}}<strong style="font-weight: 600">{{a3.b1}}</strong>{{a3.mid}}<strong style="font-weight: 600">{{a3.b2}}</strong>{{a3.post}}</h2>
+        <p style="margin: 4px 0 16px; font-size: 13.5px; color: #4A505A">{{weekHint}}</p>
+        <div style="display: flex; align-items: flex-end; gap: 10px; height: 170px">
+          <sc-for list="{{weekBars}}" as="wb" hint-placeholder-count="7">
+            <button type="button" onClick="{{wb.pick}}" aria-pressed="{{wb.pressed}}" aria-label="{{wb.aria}}" style="flex: 1 1 0; height: 100%; background: none; border: 0; padding: 0; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px">
+              <span class="n" style="font-size: 12.5px; color: {{wb.lc}}; font-weight: 500">{{wb.top}}</span>
+              <span class="{{growAnim}}" style="display: block; width: 100%; max-width: 40px; height: {{wb.h}}; background: {{wb.c}}; border-radius: 2px 2px 0 0; outline: {{wb.outline}}; outline-offset: 2px"></span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 8px">
+          <sc-for list="{{weekBars}}" as="wb" hint-placeholder-count="7"><span style="flex: 1 1 0; text-align: center; font-size: 13.5px; color: {{wb.lc}}; font-weight: {{wb.lw}}">{{wb.label}}</span></sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="f4" style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px; padding: 22px 24px">
+        <h2 id="f4" class="{{animA}}" style="margin: 0; font-size: 19px; font-weight: 400; line-height: 1.35">{{a4.pre}}<strong style="font-weight: 600">{{a4.b1}}</strong>{{a4.mid}}<strong style="font-weight: 600">{{a4.b2}}</strong>{{a4.post}}</h2>
+        <p style="margin: 4px 0 16px; font-size: 13.5px; color: #4A505A">Typical is the middle receipt, so one big supply run doesn't skew it.</p>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 76px 90px 90px; gap: 10px; font-size: 13.5px; color: #4A505A; padding-bottom: 8px; border-bottom: 1px solid #E3E6EA"><span>Category</span><span style="text-align: right">Receipts</span><span style="text-align: right">Typical</span><span style="text-align: right">Average</span></div>
+        <sc-for list="{{sizes}}" as="z" hint-placeholder-count="5">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 76px 90px 90px; gap: 10px; align-items: center; min-height: 44px; border-bottom: 1px solid #EEF0F3; opacity: {{z.op}}">
+            <span style="display: flex; align-items: center; gap: 8px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 2px; background: {{z.color}}"></span>{{z.name}}</span>
+            <span class="n" style="text-align: right">{{z.count}}</span><span class="n" style="text-align: right">{{z.typical}}</span><span class="n" style="text-align: right; color: #4A505A">{{z.avg}}</span>
+          </div>
+        </sc-for>
+      </section>
+    </div>
+
+    <p style="margin: 4px 4px 0; font-size: 14px; color: #4A505A"><strong style="color: #14161A">2026 so far:</strong> discounts saved you <span class="n" style="color: #14161A">$1,284.20</span>, and you paid <span class="n" style="color: #14161A">$2,915.44</span> in sales tax across <span class="n" style="color: #14161A">486</span> receipts.</p>
+  </main>
+  </sc-if>
+
+  <!-- ================= RECEIPTS ================= -->
+  <sc-if value="{{isReceipts}}" hint-placeholder-val="{{ false }}">
+  <main style="max-width: 1120px; margin: 0 auto; padding: 28px 24px 72px; display: flex; flex-direction: column; gap: 16px">
+    <div class="ra" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+      <h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.015em">November receipts</h1>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <label style="display: flex; align-items: center; gap: 8px; border: 1px solid #D5D9DF; border-radius: 6px; padding: 0 12px; min-height: 40px; color: #4A505A; background: #FFFFFF; width: 260px; max-width: 100%">
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search receipts</span>
+          <input id="sb-search-r" type="search" value="{{query}}" onChange="{{onQuery}}" placeholder="Search merchant or item" style="flex: 1 1 auto; min-width: 0; border: 0; outline: none; font-size: 14px; color: #14161A; background: transparent"/>
+        </label>
+        <button type="button" disabled="{{ true }}" title="Coming soon" style="font-size: 13px; font-weight: 600; color: #4A505A; background: #FFFFFF; border: 1px dashed #C9CED6; border-radius: 6px; min-height: 40px; padding: 0 14px; cursor: not-allowed">Export for accountant · soon</button>
+      </div>
+    </div>
+    <div role="tablist" aria-label="Receipt status" style="display: flex; gap: 22px; border-bottom: 1px solid #E3E6EA">
+      <sc-for list="{{rTabs}}" as="tb" hint-placeholder-count="3">
+        <button type="button" role="tab" aria-selected="{{tb.selected}}" onClick="{{tb.pick}}" style="font-size: 14px; font-weight: 600; color: {{tb.color}}; background: none; border: 0; border-bottom: 2px solid {{tb.line}}; margin-bottom: -1px; padding: 0 2px; min-height: 42px; cursor: pointer; display: flex; align-items: center; gap: 6px">{{tb.label}}<span class="n" style="font-size: 13.5px; font-weight: 500; color: {{tb.cc}}">{{tb.count}}</span></button>
+      </sc-for>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 8px; overflow: hidden">
+      <sc-if value="{{processing}}" hint-placeholder-val="{{ false }}">
+        <div class="ra" style="display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid #E3E6EA; background: #F7F8FA">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14161A" stroke-width="2" stroke-linecap="round"><path d="M7 3h10v18l-2.5-1.5L12 21l-2.5-1.5L7 21z"/><path d="M10 8h4M10 12h4"/></svg>
+          <div style="flex: 1 1 auto"><div style="font-weight: 600">Reading receipt…</div><div style="font-size: 13.5px; color: #4A505A">IMG_2214.jpg · usually a few seconds</div></div>
+          <div style="width: 120px; height: 3px; background: #E3E6EA; border-radius: 2px; overflow: hidden"><div class="scan" style="width: 40%; height: 100%; background: #14161A"></div></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{listEmpty}}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 56px 16px; text-align: center"><div style="font-size: 16px; font-weight: 600">{{emptyTitle}}</div><div style="font-size: 14px; color: #4A505A; margin-top: 4px">{{emptySub}}</div></div>
+      </sc-if>
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+        <div>
+          <div style="padding: 12px 18px; font-size: 14px; font-weight: 700; color: #14161A; background: #F1F3F6; border-bottom: 1px solid #E3E6EA">{{g.label}}</div>
+          <sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+            <button type="button" class="row {{it.anim}}" onClick="{{it.open}}" style="width: 100%; text-align: left; border: 0; border-bottom: 1px solid #EEF0F3; background: #FFFFFF; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) 150px 140px 110px; align-items: center; gap: 12px; padding: 0 18px; min-height: 60px; color: #14161A">
+              <span style="min-width: 0"><span style="display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.merchant}}</span><span style="display: block; font-size: 13.5px; color: #4A505A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.itemsLine}}</span></span>
+              <span style="font-size: 13px; color: #4A505A; display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 2px; background: {{it.color}}"></span>{{it.cat}}</span>
+              <span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: {{it.sc}}; background: {{it.sbg}}; border: 1px solid {{it.sbd}}; border-radius: 6px; padding: 3px 9px"><span aria-hidden="true" style="width: 7px; height: 7px; border-radius: 4px; background: {{it.sdot}}"></span>{{it.status}}</span></span>
+              <span class="n" style="text-align: right">{{it.total}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ================= REVIEW ================= -->
+  <sc-if value="{{reviewing}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Review receipts" style="position: fixed; inset: 0; z-index: 20; background: #FFFFFF; display: flex; flex-direction: column">
+      <header style="display: flex; align-items: center; gap: 12px; padding: 0 20px; min-height: 60px; border-bottom: 1px solid #E3E6EA; flex-wrap: wrap">
+        <button type="button" class="press" onClick="{{closeReview}}" aria-label="Close review" style="width: 40px; height: 40px; border: 0; background: #F5F6F8; border-radius: 6px; cursor: pointer; color: #14161A"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        <span style="font-weight: 600; font-size: 15px">{{rvTitle}}</span><span class="n" style="font-size: 13px; color: #4A505A">{{rvPos}}</span>
+        <div style="margin-left: auto; display: flex; gap: 6px">
+          <button type="button" class="press" onClick="{{rvPrev}}" disabled="{{rvNoPrev}}" aria-label="Previous receipt" style="width: 40px; height: 40px; border: 1px solid #E3E6EA; background: #FFFFFF; border-radius: 6px; cursor: pointer; color: #14161A; opacity: {{rvPrevOp}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <button type="button" class="press" onClick="{{rvNext}}" disabled="{{rvNoNext}}" aria-label="Next receipt" style="width: 40px; height: 40px; border: 1px solid #E3E6EA; background: #FFFFFF; border-radius: 6px; cursor: pointer; color: #14161A; opacity: {{rvNextOp}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+        </div>
+      </header>
+      <sc-if value="{{rvDone}}" hint-placeholder-val="{{ false }}">
+        <div class="ra" style="flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px; text-align: center">
+          <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2B7A4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          <div style="font-size: 28px; font-weight: 600; letter-spacing: -0.015em">All caught up.</div>
+          <div style="font-size: 15px; color: #4A505A">{{doneSub}}</div>
+          <button type="button" class="press" onClick="{{closeReview}}" style="margin-top: 12px; font-size: 14px; font-weight: 600; color: #FFFFFF; background: #14161A; border: 0; border-radius: 6px; min-height: 44px; padding: 0 20px; cursor: pointer">Back to insights</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{rvShow}}" hint-placeholder-val="{{ true }}">
+      <div class="slide" style="flex: 1 1 auto; min-height: 0; display: flex; flex-wrap: wrap; overflow-y: auto">
+        <div style="flex: 1 1 400px; min-width: 0; background: #ECEEF1; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 12px">
+          <div style="align-self: stretch; display: flex; justify-content: space-between; align-items: center"><span style="font-size: 13.5px; color: #4A505A">Original photo</span>
+            <button type="button" class="press" onClick="{{toggleZoom}}" aria-pressed="{{zoomPressed}}" style="font-size: 13.5px; font-weight: 600; color: #14161A; background: #FFFFFF; border: 1px solid #D5D9DF; border-radius: 6px; min-height: 32px; padding: 0 10px; cursor: pointer">{{zoomLabel}}</button></div>
+          <div style="width: 100%; max-width: 380px; overflow: auto; max-height: 640px">
+            <div class="n" style="background: #FFFFFF; padding: 22px 20px 26px; font-size: 13.5px; line-height: 1.75; color: #2A2D33; box-shadow: 0 1px 3px rgba(20,22,26,0.12); transform: scale({{zoom}}); transform-origin: top left; transition: transform 220ms cubic-bezier(.23,1,.32,1)">
+              <div style="text-align: center; font-weight: 500; font-size: 13px">{{rvUpper}}</div>
+              <div style="text-align: center; color: #4A505A; font-size: 12.5px">{{rvDateLong}}</div>
+              <div style="border-top: 1px dashed #C4C8CF; margin: 10px 0"></div>
+              <sc-for list="{{rvScan}}" as="sl" hint-placeholder-count="4"><div style="display: flex; justify-content: space-between; gap: 8px; margin: 0 -6px; padding: 0 6px; background: {{sl.mark}}; outline: {{sl.outline}}"><span>{{sl.name}}</span><span>{{sl.price}}</span></div></sc-for>
+              <div style="border-top: 1px dashed #C4C8CF; margin: 10px 0"></div>
+              <div style="display: flex; justify-content: space-between"><span>TAX</span><span>{{rvTaxPlain}}</span></div>
+              <div style="display: flex; justify-content: space-between; font-weight: 500; font-size: 13px; margin: 0 -6px; padding: 0 6px; background: {{rvTotalMark}}"><span>TOTAL</span><span>{{rvScanTotal}}</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1 1 420px; min-width: 0; padding: 28px 32px 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; max-width: 640px">
+          <sc-if value="{{rvHasReason}}" hint-placeholder-val="{{ true }}"><div role="status" style="background: #FFF6EE; border-left: 3px solid #D9480F; padding: 12px 14px; font-size: 14px; color: #5C4632; line-height: 1.45">{{rvReasonText}}</div></sc-if>
+          <div><div style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em">{{rvMerchant}}</div><div class="n" style="font-size: 13px; color: #4A505A; margin-top: 2px">{{rvDateLong}}</div></div>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Category
+            <select value="{{rvCat}}" onChange="{{onCat}}" style="font-size: 14px; font-weight: 400; color: #14161A; border: 1px solid #D5D9DF; border-radius: 6px; padding: 0 10px; min-height: 42px; background: #FFFFFF; max-width: 280px">
+              <option value="Groceries">Groceries</option><option value="Transportation">Transportation</option><option value="Shopping">Shopping</option><option value="Dining">Dining</option><option value="Health">Health</option><option value="Entertainment">Entertainment</option><option value="Travel">Travel</option><option value="Other">Other</option>
+            </select></label>
+          <sc-if value="{{rvLearn}}" hint-placeholder-val="{{ false }}"><div class="ra" role="status" style="font-size: 13px; display: flex; gap: 8px; align-items: center; margin-top: -10px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2B7A4B" stroke-width="2.4" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>{{rvLearnText}}</div></sc-if>
+          <div>
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 8px; font-size: 13.5px; color: #4A505A; padding-bottom: 6px; border-bottom: 1px solid #E3E6EA"><span>Item</span><span style="text-align: right">Price</span></div>
+            <sc-for list="{{rvItems}}" as="ei" hint-placeholder-count="4">
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #F0F1F4"><span>{{ei.name}}</span>
+                <input class="n" type="text" inputmode="decimal" aria-label="{{ei.aria}}" value="{{ei.value}}" onChange="{{ei.onChange}}" readOnly="{{ei.readOnly}}" style="font-size: 14px; text-align: right; color: #14161A; border: {{ei.border}}; border-radius: 6px; padding: 0 10px; min-height: 36px; background: {{ei.bg}}; box-sizing: border-box; width: 100%"/></div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; align-self: flex-end; width: 100%; max-width: 320px">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #4A505A"><span>Items</span><span class="n">{{rvSumStr}}</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #4A505A"><span>Tax</span><span class="n">{{rvTaxStr}}</span></div>
+            <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 15px; font-weight: 600">Total
+              <input class="n" type="text" inputmode="decimal" value="{{rvTotal}}" onChange="{{onTotal}}" placeholder="0.00" style="font-size: 16px; text-align: right; color: #14161A; border: {{rvTotalBorder}}; border-radius: 6px; padding: 0 10px; min-height: 42px; width: 140px; background: {{rvTotalBg}}"/></label>
+            <div class="n" role="status" style="font-size: 13.5px; text-align: right; color: {{rvCheckColor}}">{{rvCheck}}</div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid #E3E6EA; flex-wrap: wrap">
+            <sc-if value="{{rvInQueue}}" hint-placeholder-val="{{ true }}"><button type="button" class="press" onClick="{{rvSkip}}" style="font-size: 14px; font-weight: 600; color: #14161A; background: #FFFFFF; border: 1px solid #D5D9DF; border-radius: 6px; min-height: 46px; padding: 0 18px; cursor: pointer">Skip for now</button></sc-if>
+            <button type="button" class="press" onClick="{{rvConfirm}}" disabled="{{rvCantSave}}" style="font-size: 14px; font-weight: 600; color: #FFFFFF; background: #14161A; border: 0; border-radius: 6px; min-height: 46px; padding: 0 22px; cursor: pointer; opacity: {{rvSaveOp}}">{{rvConfirmLabel}}</button>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <!-- ================= ADD SHEET ================= -->
+  <sc-if value="{{adding}}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 25; background: rgba(20,22,26,0.4); display: flex; align-items: center; justify-content: center; padding: 16px">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="add-h" style="background: #FFFFFF; border-radius: 10px; width: 100%; max-width: 520px; padding: 24px; box-sizing: border-box; box-shadow: 0 20px 60px rgba(20,22,26,0.25)">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px"><h2 id="add-h" style="margin: 0; font-size: 18px; font-weight: 600">Add receipts</h2>
+          <button type="button" class="press" onClick="{{closeAdd}}" aria-label="Close" style="width: 36px; height: 36px; border: 0; background: #F5F6F8; border-radius: 6px; cursor: pointer; color: #14161A"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+        <button type="button" onClick="{{simulateUpload}}" style="width: 100%; border: 1.5px dashed #C4C8CF; border-radius: 8px; background: #F7F8FA; padding: 36px 16px; cursor: pointer; color: #14161A; display: flex; flex-direction: column; align-items: center; gap: 6px">
+          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>
+          <span style="font-size: 15px; font-weight: 600">Drop photos or PDFs here</span><span style="font-size: 13px; color: #4A505A">JPG, PNG or PDF, up to 10 MB each</span></button>
+        <div style="display: flex; gap: 8px; margin-top: 12px">
+          <button type="button" class="press" onClick="{{simulateUpload}}" style="flex: 1 1 0; font-size: 14px; font-weight: 600; color: #FFFFFF; background: #14161A; border: 0; border-radius: 6px; min-height: 46px; cursor: pointer">Take a photo</button>
+          <button type="button" class="press" onClick="{{simulateUpload}}" style="flex: 1 1 0; font-size: 14px; font-weight: 600; color: #14161A; background: #FFFFFF; border: 1px solid #D5D9DF; border-radius: 6px; min-height: 46px; cursor: pointer">Choose files</button></div>
+        <p style="margin: 14px 0 0; font-size: 13.5px; color: #4A505A">Shoebox reads each receipt on its own server and only asks you about the ones it isn't sure of.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{acctOpen}}" hint-placeholder-val="{{ false }}">
+    <div aria-hidden="true" onClick="{{closeAcct}}" style="position: fixed; inset: 0; z-index: 9"></div>
+  </sc-if>
+
+  <sc-if value="{{shortcutsOpen}}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 25; background: rgba(20,22,26,0.4); display: flex; align-items: center; justify-content: center; padding: 16px">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ks-h" style="background: #FFFFFF; border-radius: 10px; width: 100%; max-width: 440px; padding: 24px; box-sizing: border-box; box-shadow: 0 20px 60px rgba(20,22,26,0.25)">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px"><h2 id="ks-h" style="margin: 0; font-size: 18px; font-weight: 600">Keyboard shortcuts</h2>
+          <button type="button" class="press" onClick="{{closeShortcuts}}" aria-label="Close" style="width: 36px; height: 36px; border: 0; background: #F5F6F8; border-radius: 6px; cursor: pointer; color: #14161A"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+        <sc-for list="{{shortcutRows}}" as="ks" hint-placeholder-count="6">
+          <div style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; border-bottom: 1px solid #EEF0F3; font-size: 15px"><span>{{ks.what}}</span><kbd class="n" style="font-size: 13px; border: 1px solid #D5D9DF; border-radius: 4px; padding: 2px 8px; color: #14161A; background: #F7F8FA">{{ks.key}}</kbd></div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{signedOut}}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 40; background: #F5F6F8; display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto">
+      <form class="ra" onSubmit="{{signIn}}" aria-labelledby="si-h" style="width: 100%; max-width: 400px; background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 12px; padding: 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; align-items: center; gap: 9px"><svg aria-hidden="true" width="24" height="20" viewBox="0 0 26 22" fill="none"><rect x="1" y="7" width="24" height="14" rx="1.5" stroke="#14161A" stroke-width="2.2"/><path d="M0 4.5h26" stroke="#14161A" stroke-width="2.2"/></svg><span style="font-weight: 700; font-size: 19px">Shoebox</span></div>
+        <div><h1 id="si-h" style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">{{siTitle}}</h1><p style="margin: 6px 0 0; font-size: 15px; color: #4A505A">Snap a receipt. Shoebox files it and only asks when it isn't sure.</p></div>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Email<input type="email" autocomplete="email" value="rosa@rosastacos.com" readOnly="{{ true }}" style="font-size: 15px; font-weight: 400; border: 1px solid #D5D9DF; border-radius: 6px; padding: 0 12px; min-height: 46px; color: #14161A"/></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">Password<input type="password" autocomplete="current-password" value="demo-pass-123" readOnly="{{ true }}" style="font-size: 15px; font-weight: 400; border: 1px solid #D5D9DF; border-radius: 6px; padding: 0 12px; min-height: 46px; color: #14161A"/><span style="font-size: 13px; font-weight: 400; color: #4A505A">{{siHint}}</span></label>
+        <button type="submit" class="press" style="font-size: 15px; font-weight: 600; color: #FFFFFF; background: #14161A; border: 0; border-radius: 6px; min-height: 48px; cursor: pointer">{{siButton}}</button>
+        <p style="margin: 0; font-size: 14px; color: #4A505A; text-align: center">{{siSwitchText}} <button type="button" onClick="{{siToggle}}" style="font-size: 14px; font-weight: 600; color: #14161A; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px">{{siSwitchLink}}</button></p>
+      </form>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" aria-live="polite" style="position: fixed; left: 0; right: 0; bottom: 24px; z-index: 30; display: flex; justify-content: center; pointer-events: none">
+      <div class="ra" style="background: #14161A; color: #FFFFFF; border-radius: 8px; padding: 12px 16px; font-size: 14px; box-shadow: 0 8px 24px rgba(20,22,26,0.2)">{{toast}}</div></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1600}}'>
+var CATS = ['Groceries', 'Transportation', 'Shopping', 'Dining', 'Other', 'Health', 'Entertainment', 'Travel'];
+var COLORS = { Groceries: '#4C9A62', Transportation: '#3473D6', Shopping: '#7B5BC4', Dining: '#E0702E', Other: '#9AA0AA', Health: '#D24D67', Entertainment: '#D4A72C', Travel: '#2A9BA3' };
+var MONTHS = [
+  { key: 'Jun', label: 'June', days: 30, first: 1, data: [2410, 690, 420, 140, 310, 25, 60, 0] },
+  { key: 'Jul', label: 'July', days: 31, first: 3, data: [2780, 760, 980, 165, 290, 0, 180, 420] },
+  { key: 'Aug', label: 'August', days: 31, first: 6, data: [2520, 720, 360, 130, 455, 48, 120, 0] },
+  { key: 'Sep', label: 'September', days: 30, first: 2, data: [2655, 705, 515, 152, 300, 18, 95, 0] },
+  { key: 'Oct', label: 'October', days: 31, first: 4, data: [3010, 790, 640, 178, 330, 22, 150, 0] },
+  { key: 'Nov', label: 'November', days: 30, first: 0, partial: 7, data: null }
+];
+var MER = [
+  ['Restaurant Depot', 'Groceries', 0.48, 110], ['Sysco', 'Groceries', 0.32, 150], ['Costco Business Center', 'Groceries', 0.2, 70],
+  ['Shell', 'Transportation', 0.62, 72], ['QuikTrip', 'Transportation', 0.38, 50],
+  ['WebstaurantStore', 'Shopping', 0.45, 95], ['Home Depot', 'Shopping', 0.4, 60], ['Amazon', 'Shopping', 0.15, 45],
+  ['Waffle House', 'Dining', 0.55, 14], ['Chick-fil-A', 'Dining', 0.45, 11],
+  ['Athens-Clarke County', 'Other', 0.35, 75], ['Office Depot', 'Other', 0.4, 40], ['USPS', 'Other', 0.25, 15],
+  ['CVS Pharmacy', 'Health', 1, 15], ['Georgia Theatre', 'Entertainment', 1, 50], ['Hampton Inn', 'Travel', 1, 140]
+];
+var WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+var WDS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+var DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var WEIGHT = [1.45, 0.55, 0.8, 1.35, 1.0, 0.9, 0.3];
+
+function money(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function money0(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+function parse(v) { var n = parseFloat(String(v).replace(/[$,\s]/g, '')); return isNaN(n) ? null : n; }
+function tint(hex, k) { var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; var f = function (c) { return Math.round(c + (255 - c) * k); }; return 'rgb(' + f(r) + ',' + f(g) + ',' + f(b) + ')'; }
+function mondayIndex(jsDay) { return (jsDay + 6) % 7; }
+function rtotal(r) { return r.total != null ? r.total : sum(r.items.map(function (i) { return i[1]; })) + r.tax; }
+
+function seed() {
+  var R = function (id, m, cat, day, items, tax, total, status, reason, flag) { return { id: id, merchant: m, cat: cat, day: day, items: items, tax: tax, total: total, status: status, reason: reason || null, flag: flag || null }; };
+  return [
+    R(1, 'Restaurant Depot', 'Groceries', 7, [['Ground Beef 10 lb', 44.90], ['Chicken Thighs 40 lb case', 74.80], ['Tortillas 12in 72ct', 16.49], ['Shredded Cheese 5 lb', 19.99], ['Onions 50 lb', 24.50]], 14.45, 195.13, 'review', 'The items don’t add up to the subtotal', { type: 'item', index: 1, scanned: 7.48 }),
+    R(2, 'Shell', 'Transportation', 7, [['Diesel 23.4 gal', 84.21]], 0, null, 'review', 'We couldn’t find the total', { type: 'total' }),
+    R(3, 'WebstaurantStore', 'Shopping', 6, [['Clamshell Containers 200ct', 38.95], ['Squeeze Bottles 12pk', 16.49], ['Nitrile Gloves 1000ct', 64.99]], 9.63, 130.06, 'review', 'We couldn’t read the price of one item', { type: 'item', index: 1, scanned: null }),
+    R(4, 'Sysco', 'Groceries', 6, [['Produce Order', 112.40], ['Paper Goods', 44.10]], 0, 156.50, 'filed'),
+    R(5, 'Costco Business Center', 'Groceries', 6, [['Bottled Water 40pk', 5.49], ['Canned Soda 36pk', 16.99], ['Foil Pans 30ct', 14.99], ['Napkins 6000ct', 27.49]], 2.80, 67.76, 'filed'),
+    R(6, 'Shell', 'Transportation', 5, [['Diesel 19.8 gal', 71.30]], 0, 71.30, 'filed'),
+    R(7, 'Home Depot', 'Shopping', 4, [['Propane Exchange', 23.98], ['Extension Cord 50ft', 41.97]], 5.28, 71.23, 'filed'),
+    R(8, 'Restaurant Depot', 'Groceries', 3, [['Fryer Oil 35 lb', 46.99], ['Ground Beef 10 lb', 43.80], ['Onions 50 lb', 23.90]], 9.18, 123.87, 'filed'),
+    R(9, 'Waffle House', 'Dining', 3, [['Breakfast Plate', 11.25], ['Coffee', 2.45]], 1.10, 14.80, 'filed'),
+    R(10, 'QuikTrip', 'Transportation', 2, [['Unleaded 14.2 gal', 48.62]], 0, 48.62, 'filed'),
+    R(11, 'Office Depot', 'Other', 2, [['Receipt Paper Rolls 50ct', 36.99]], 2.96, 39.95, 'filed'),
+    R(12, 'Athens-Clarke County', 'Other', 1, [['Mobile Vendor Permit', 75.00]], 0, 75.00, 'filed'),
+    R(13, 'Sysco', 'Groceries', 1, [['Dairy Order', 61.80]], 0, 61.80, 'filed'),
+    R(14, 'Chick-fil-A', 'Dining', 1, [['Chicken Sandwich Meal', 10.49]], 0.84, 11.33, 'filed')
+  ];
+}
+
+// Daily values for a past month (deterministic), scaled to a total
+function pastDaily(mi, total) {
+  var m = MONTHS[mi], vals = [], s = 7 + mi * 13;
+  for (var d = 0; d < m.days; d++) {
+    s = (s * 9301 + 49297) % 233280;
+    var wd = mondayIndex((m.first + d) % 7);
+    vals.push(WEIGHT[wd] * (0.35 + s / 233280 * 1.3));
+  }
+  var t = sum(vals);
+  return vals.map(function (v) { return v / t * total; });
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'insights', month: 5, cat: null, query: '', wday: null, flip: false, acct: false, shortcuts: false, signedOut: false, register: false,
+      receipts: seed(), rTab: 'review', rvId: null, rvQueue: false, rvDone: false, items: [], total: '', rcat: '', origCat: '', zoom: 1,
+      adding: false, processing: false, freshId: null, toast: '' };
+    this.timers = [];
+  }
+  componentDidMount() { var el = document.getElementById('sb-root'); if (el) el.focus({ preventScroll: true }); }
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  setMonth(i) { if (i < 0 || i > 5 || i === this.state.month) return; this.setState({ month: i, flip: !this.state.flip }); }
+  setCat(c) { this.setState({ cat: c, flip: !this.state.flip }); }
+  toastMsg(t) { var self = this, st = Date.now(); this.setState({ toast: t, toastAt: st }); this.later(function () { if (self.state.toastAt === st) self.setState({ toast: '' }); }, 3200); }
+  load(id, inQueue, list) {
+    var r = (list || this.state.receipts).filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    var items = r.items.map(function (it, i) { if (r.flag && r.flag.type === 'item' && r.flag.index === i) return r.flag.scanned == null ? '' : r.flag.scanned.toFixed(2); return it[1].toFixed(2); });
+    this.setState({ rvId: id, rvQueue: inQueue, rvDone: false, items: items, total: r.total == null ? '' : r.total.toFixed(2), rcat: r.cat, origCat: r.cat, zoom: 1, adding: false });
+  }
+
+  renderVals() {
+    var self = this, s = this.state, receipts = s.receipts, idx = s.month, cat = s.cat;
+    var q = s.query.trim().toLowerCase();
+    var queue = receipts.filter(function (r) { return r.status === 'review'; });
+    var filed = receipts.filter(function (r) { return r.status === 'filed'; });
+
+    // November data from receipts
+    var novData = CATS.map(function (c) { return sum(receipts.filter(function (r) { return r.cat === c; }).map(rtotal)); });
+    var novWait = CATS.map(function (c) { return sum(queue.filter(function (r) { return r.cat === c; }).map(rtotal)); });
+    var dataOf = function (i) { return i === 5 ? novData : MONTHS[i].data; };
+    var ci = cat ? CATS.indexOf(cat) : -1;
+    var amtOf = function (i) { var d = dataOf(i); return ci >= 0 ? d[ci] : sum(d); };
+    var m = MONTHS[idx], prev = idx > 0 ? MONTHS[idx - 1] : null, partial = !!m.partial;
+    var total = amtOf(idx), prevTotal = prev ? amtOf(idx - 1) : null;
+    var factor = partial ? m.days / m.partial : 1, proj = total * factor;
+    var allMonth = sum(dataOf(idx));
+    var waitNow = partial ? (ci >= 0 ? novWait[ci] : sum(novWait)) : 0;
+    var catWord = cat ? ' on ' + cat : '';
+
+    // Hero
+    var hero = {};
+    if (partial) {
+      hero.heroPre = 'You’ve spent '; hero.heroAmount = money(total); hero.heroPost = catWord + ' in ' + m.label + ' so far.';
+      var diff = proj - prevTotal;
+      if (prevTotal > 0) {
+        hero.heroLine = m.partial + ' days into ' + m.label + ', you’ve spent ' + Math.round(total / prevTotal * 100) + '% of ' + prev.label + '’s total. At this pace you’ll end near ' + money0(proj) + ', ';
+        hero.heroDelta = (diff < 0 ? '↓ ' : '↑ ') + money0(Math.abs(diff)) + (diff < 0 ? ' less' : ' more');
+        hero.heroLineEnd = ' than ' + prev.label + '.';
+      } else { hero.heroLine = 'Nothing here in ' + prev.label + ', so there’s no comparison yet.'; hero.heroDelta = ''; hero.heroLineEnd = ''; }
+      hero.heroDeltaColor = diff < 0 ? '#1F5FBF' : '#B4471F';
+    } else {
+      hero.heroPre = 'You spent '; hero.heroAmount = money(total); hero.heroPost = catWord + ' in ' + m.label + '.';
+      if (prev) {
+        var d2 = total - prevTotal;
+        hero.heroLine = ''; hero.heroDelta = (d2 < 0 ? '↓ ' : '↑ ') + money(Math.abs(d2)) + (d2 < 0 ? ' less' : ' more'); hero.heroLineEnd = ' than ' + prev.label + '.';
+        hero.heroDeltaColor = d2 < 0 ? '#1F5FBF' : '#B4471F';
+      } else { hero.heroLine = 'The first month Shoebox has.'; hero.heroDelta = ''; hero.heroLineEnd = ''; hero.heroDeltaColor = '#14161A'; }
+    }
+    var nRec = partial ? receipts.filter(function (r) { return ci < 0 || r.cat === cat; }).length : Math.round(total / 92);
+    hero.heroStats = nRec + ' receipts · ' + money(total / (partial ? m.partial : m.days)) + ' a day' + (prev ? ' · ' + money(prevTotal) + ' in ' + prev.label : '') + (waitNow > 0 ? ' · includes ' + money(waitNow) + ' waiting on you' : '');
+
+    // Mini month bars + spine
+    var maxM = Math.max.apply(null, MONTHS.map(function (x, i) { return amtOf(i) * (x.partial ? x.days / x.partial : 1); }));
+    var mini = MONTHS.map(function (x, i) {
+      var t = amtOf(i), sel = i === idx, f = x.partial ? x.days / x.partial : 1;
+      return { l: x.key[0], lc: sel ? '#14161A' : '#5A606B', lw: sel ? 600 : 400, aria: x.label + ' ' + money0(t),
+        h: Math.max(4, Math.round(t * f / maxM * 100)) + '%', fill: x.partial ? Math.round(1 / f * 100) + '%' : (sel ? '100%' : '0%'),
+        bg: x.partial ? '#FFFFFF' : (sel ? '#14161A' : '#C9CED6'), border: x.partial ? '1px dashed #8A909C' : '0', pick: function () { self.setMonth(i); } };
+    });
+    var H = 120;
+    var maxAll = Math.max.apply(null, MONTHS.map(function (x, i) { return sum(dataOf(i)) * (x.partial ? x.days / x.partial : 1); }));
+    var spine = MONTHS.map(function (x, i) {
+      var d = dataOf(i), sel = i === idx, t = amtOf(i), tAll = sum(d), f = x.partial ? x.days / x.partial : 1;
+      var segs = CATS.map(function (c, j) {
+        var on = ci < 0 || ci === j;
+        return { h: (d[j] / maxAll * H).toFixed(1) + 'px', c: sel || (ci >= 0 && on) ? COLORS[c] : tint(COLORS[c], 0.62), op: on ? 1 : 0.15, v: d[j] };
+      }).filter(function (g) { return g.v > 0; }).reverse();
+      return { label: x.key + (i === 0 ? '  2026' : ''), totalStr: money0(t), pressed: sel ? 'true' : 'false', aria: x.label + ': ' + money0(t),
+        lc: sel ? '#14161A' : '#5A606B', lw: sel ? 600 : 400, outline: sel ? '#14161A' : 'transparent', segs: segs,
+        ghost: x.partial ? ((tAll * f - tAll) / maxAll * H).toFixed(1) + 'px' : '0px', ghostLabel: x.partial ? 'pace ' + money0(t * f) : '',
+        pick: function () { self.setMonth(i); } };
+    });
+    var a = idx / 6 * 100, b = (idx + 1) / 6 * 100;
+    var connPoints = a.toFixed(2) + ',0 ' + b.toFixed(2) + ',0 100,10 0,10';
+
+    // Daily
+    var dailyVals = [];
+    if (partial) {
+      for (var dd = 1; dd <= m.days; dd++) dailyVals.push(dd <= m.partial ? sum(receipts.filter(function (r) { return r.day === dd && (ci < 0 || r.cat === cat); }).map(rtotal)) : null);
+    } else { dailyVals = pastDaily(idx, total); }
+    var dmax = Math.max.apply(null, dailyVals.map(function (v) { return v || 0; })) || 1;
+    var bigI = dailyVals.indexOf(Math.max.apply(null, dailyVals.map(function (v) { return v || 0; })));
+    var daily = dailyVals.map(function (v, i) { var w = mondayIndex((m.first + i) % 7), hl = s.wday != null; return { h: v == null ? '0px' : Math.max(2, Math.round(v / dmax * 64)) + 'px', c: hl ? (w === s.wday ? '#14161A' : '#C9CED6') : (i === bigI ? '#14161A' : '#5A606B'), delay: (i * 10) + 'ms' }; });
+    var bigWd = DAYN[(m.first + bigI) % 7];
+    var dayTicks = [1, 8, 15, 22, 29].map(function (d) { return { label: String(d), left: ((d - 1) / m.days * 100).toFixed(1) + '%' }; });
+
+    // Answer 1: categories
+    var d0 = dataOf(idx), dp = prev ? dataOf(idx - 1) : null;
+    var rows = CATS.map(function (c, j) {
+      var amt = d0[j], pa = dp ? dp[j] : null, cmp = partial && pa != null ? pa * m.partial / m.days : pa;
+      var dlt = cmp != null ? amt - cmp : null;
+      return { name: c, j: j, amt: amt, wait: partial ? novWait[j] : 0, dlt: dlt, cmp: cmp };
+    }).filter(function (r) { return r.amt > 0; }).sort(function (x, y) { return y.amt - x.amt; });
+    var rmax = rows.length ? rows[0].amt : 1;
+    var catRows = rows.map(function (r) {
+      var on = cat === r.name;
+      return { name: r.name, color: COLORS[r.name], amt: money(r.amt), share: Math.round(r.amt / allMonth * 100) + '%',
+        fw: ((r.amt - r.wait) / rmax * 100).toFixed(1) + '%', ww: (r.wait / rmax * 100).toFixed(1) + '%',
+        delta: r.dlt == null ? '—' : (r.dlt < 0 ? '↓ ' : '↑ ') + money0(Math.abs(r.dlt)), dc: r.dlt == null ? '#5A606B' : (r.dlt < 0 ? '#1F5FBF' : '#B4471F'),
+        bg: on ? tint(COLORS[r.name], 0.9) : 'transparent', mark: on ? COLORS[r.name] : 'transparent', fw2: on ? 700 : 500, pressed: on ? 'true' : 'false', pick: function () { self.setCat(on ? null : r.name); } };
+    });
+    var a1 = rows.length > 1
+      ? { pre: rows[0].name + ' was ', b1: Math.round(rows[0].amt / allMonth * 100) + '%', mid: ' of it, then ' + rows[1].name + ' at ', b2: Math.round(rows[1].amt / allMonth * 100) + '%', post: '.' }
+      : { pre: 'No spending recorded.', b1: '', mid: '', b2: '', post: '' };
+    if (partial) { a1.pre = rows[0].name + ' is '; a1.mid = ' of it so far, then ' + rows[1].name + ' at '; }
+    var strip = rows.slice(0, 5).map(function (r) { return { g: Math.round(r.amt), c: COLORS[r.name] }; });
+
+    // Answer 2: merchants
+    var mlist;
+    if (partial) {
+      var mm = {};
+      receipts.forEach(function (r) { var x = mm[r.merchant] || (mm[r.merchant] = { name: r.merchant, cat: r.cat, visits: 0, total: 0 }); x.visits++; x.total += rtotal(r); });
+      mlist = Object.keys(mm).map(function (k) { return mm[k]; });
+    } else {
+      mlist = MER.map(function (row) { var j = CATS.indexOf(row[1]), t = d0[j] * row[2]; return { name: row[0], cat: row[1], total: t, visits: Math.max(1, Math.round(t / row[3])) }; });
+    }
+    mlist = mlist.filter(function (x) { return x.total > 0 && (ci < 0 || x.cat === cat) && (!q || x.name.toLowerCase().indexOf(q) >= 0); }).sort(function (x, y) { return y.total - x.total; });
+    var top5 = mlist.slice(0, 5);
+    var merchants = top5.map(function (x) { return { name: x.name, color: COLORS[x.cat], visits: x.visits, avg: money(x.total / x.visits), total: money(x.total), disabled: !partial, cursor: partial ? 'pointer' : 'default', arrowOp: partial ? 1 : 0, aria: partial ? 'See ' + x.name + ' receipts' : x.name, open: function () { self.setState({ view: 'receipts', rTab: 'all', query: x.name }); } }; });
+    var top5sum = sum(top5.map(function (x) { return x.total; }));
+    var a2 = top5.length ? { pre: top5[0].name + ' took the most: ', b1: money(top5[0].total), mid: ' over ', b2: top5[0].visits + (top5[0].visits === 1 ? ' visit' : ' visits'), post: '.' }
+      : { pre: 'No merchants match “' + s.query + '”.', b1: '', mid: '', b2: '', post: '' };
+    var mLines = top5.map(function (x, i) { return { h: i === 0 ? '3px' : '2px', w: Math.round(x.total / (top5[0] ? top5[0].total : 1) * 100) + '%', c: i === 0 ? '#14161A' : '#C9CED6' }; });
+    var merchNote = top5.length ? 'These ' + top5.length + ' are ' + money(top5sum) + ' of ' + money(total) + ', ' + Math.round(top5sum / total * 100) + '% of the month.' + (q ? ' Filtered by “' + s.query + '”.' : '') : '';
+
+    // Answer 3: weekdays
+    var wk = [0, 0, 0, 0, 0, 0, 0], wv = [0, 0, 0, 0, 0, 0, 0];
+    dailyVals.forEach(function (v, i) { if (v) { var w = mondayIndex((m.first + i) % 7); wk[w] += v; wv[w] += partial ? receipts.filter(function (r) { return r.day === i + 1 && (ci < 0 || r.cat === cat); }).length : Math.max(1, Math.round(v / 90)); } });
+    var wmax = Math.max.apply(null, wk) || 1, wtop = wk.indexOf(wmax);
+    var week = wk.map(function (v, i) { return { day: WD[i], visits: wv[i], spent: money(v), fw: i === wtop ? 600 : 400 }; });
+    var weekBars = wk.map(function (v, i) { var on = s.wday === i, any = s.wday != null; return { label: WD[i].slice(0, 3), top: (i === wtop || on) ? money0(v) : '', h: Math.max(3, Math.round(v / wmax * 140)) + 'px', c: any ? (on ? '#14161A' : '#C9CED6') : (i === wtop ? '#14161A' : '#C9CED6'), lc: (on || (!any && i === wtop)) ? '#14161A' : '#5A606B', lw: (on || (!any && i === wtop)) ? 600 : 400, outline: on ? '2px solid #14161A' : 'none', pressed: on ? 'true' : 'false', aria: WD[i] + ': ' + money(v) + ', ' + wv[i] + ' visits', pick: function () { self.setState({ wday: on ? null : i }); } }; });
+    var a3 = { pre: WD[wtop] + 's are your biggest day: ', b1: money0(wmax), mid: ', or ', b2: Math.round(wmax / (sum(wk) || 1) * 100) + '%', post: ' of the month.' };
+
+    // Answer 4: typical receipt
+    var sizes = rows.map(function (r) {
+      var cnt, avg, typ;
+      if (partial) { var list = receipts.filter(function (x) { return x.cat === r.name; }).map(rtotal).sort(function (x, y) { return x - y; }); cnt = list.length; avg = sum(list) / cnt; typ = list[Math.floor((cnt - 1) / 2)]; }
+      else { var tk = MER.filter(function (x) { return x[1] === r.name; }).reduce(function (acc, x) { return acc + x[2] * x[3]; }, 0) || 50; cnt = Math.max(1, Math.round(r.amt / tk)); avg = r.amt / cnt; typ = avg * 0.9; }
+      return { name: r.name, color: COLORS[r.name], count: cnt, avg: money(avg), typical: money(typ), typRaw: typ, op: ci < 0 || r.name === cat ? 1 : 0.45 };
+    });
+    var szTop = sizes[0];
+    var a4 = szTop ? { pre: 'A typical ' + szTop.name + ' receipt is ', b1: szTop.typical, mid: ', across ', b2: String(szTop.count), post: ' this month.' } : { pre: '', b1: '', mid: '', b2: '', post: '' };
+
+    // Receipts tab
+    var visible = receipts.filter(function (r) {
+      if (s.rTab === 'review' && r.status !== 'review') return false;
+      if (s.rTab === 'filed' && r.status !== 'filed') return false;
+      return !q || r.merchant.toLowerCase().indexOf(q) >= 0 || r.items.some(function (i) { return i[0].toLowerCase().indexOf(q) >= 0; });
+    });
+    var byDay = {};
+    visible.forEach(function (r) { (byDay[r.day] = byDay[r.day] || []).push(r); });
+    var groups = Object.keys(byDay).map(Number).sort(function (x, y) { return y - x; }).map(function (d) {
+      return { label: (d === 7 ? 'Today · ' : d === 6 ? 'Yesterday · ' : '') + DAYN[(MONTHS[5].first + d - 1) % 7] + ', Nov ' + d, items: byDay[d].map(function (r) {
+        var rev = r.status === 'review';
+        return { merchant: r.merchant, cat: r.cat, color: COLORS[r.cat], itemsLine: r.items.map(function (i) { return i[0]; }).join(', '),
+          status: rev ? 'Needs a look' : 'Filed', sc: rev ? '#B4471F' : '#5A606B', total: r.total == null ? '—' : money(r.total),
+          anim: r.id === s.freshId ? 'ra' : '', open: function () { self.load(r.id, rev); } };
+      }) };
+    });
+    var rTabs = [['review', 'Needs a look', queue.length], ['filed', 'Filed', filed.length], ['all', 'All', receipts.length]].map(function (t) {
+      var on = s.rTab === t[0];
+      return { label: t[1], count: t[2], selected: on ? 'true' : 'false', color: on ? '#14161A' : '#5A606B', line: on ? '#14161A' : 'transparent',
+        cc: t[0] === 'review' && t[2] ? '#B4471F' : '#5A606B', pick: function () { self.setState({ rTab: t[0] }); } };
+    });
+
+    // Review
+    var rv = { rvTitle: 'Review', rvPos: '', rvNoPrev: true, rvNoNext: true, rvPrevOp: 0.35, rvNextOp: 0.35, rvShow: false };
+    var r = s.rvId != null ? receipts.filter(function (x) { return x.id === s.rvId; })[0] : null;
+    if (r) {
+      var vals = s.items.map(parse), itemSum = sum(vals.map(function (v) { return v || 0; }));
+      var tot = parse(s.total), expected = Math.round((itemSum + r.tax) * 100) / 100;
+      var complete = tot != null && vals.every(function (v) { return v != null; });
+      var ok = complete && Math.abs(tot - expected) < 0.01;
+      var flagIdx = r.flag && r.flag.type === 'item' ? r.flag.index : -1;
+      var qi = queue.map(function (x) { return x.id; }).indexOf(r.id), inQ = s.rvQueue && qi >= 0;
+      var goNext = function (list, from) { var rest = list.filter(function (x) { return x.status === 'review'; }); if (!rest.length) { self.setState({ rvId: null, rvDone: true }); return; } self.load(rest[Math.min(from, rest.length - 1)].id, true, list); };
+      rv = {
+        rvTitle: inQ ? 'Review' : (r.status === 'review' ? 'Needs a look' : 'Filed receipt'), rvPos: inQ ? (qi + 1) + ' of ' + queue.length : '',
+        rvNoPrev: !inQ || qi <= 0, rvNoNext: !inQ || qi >= queue.length - 1, rvPrevOp: !inQ || qi <= 0 ? 0.35 : 1, rvNextOp: !inQ || qi >= queue.length - 1 ? 0.35 : 1,
+        rvPrev: function () { if (inQ && qi > 0) self.load(queue[qi - 1].id, true); }, rvNext: function () { if (inQ && qi < queue.length - 1) self.load(queue[qi + 1].id, true); },
+        rvShow: true, rvMerchant: r.merchant, rvUpper: r.merchant.toUpperCase(),
+        rvDateLong: DAYN[(MONTHS[5].first + r.day - 1) % 7] + ', November ' + r.day + ', 2026',
+        rvScan: r.items.map(function (it, i) { var f = i === flagIdx; return { name: it[0].toUpperCase(), price: f ? (r.flag.scanned == null ? '▒▒.▒▒' : r.flag.scanned.toFixed(2)) : it[1].toFixed(2), mark: f ? 'rgba(217,72,15,0.14)' : 'transparent', outline: f ? '1.5px solid #D9480F' : 'none' }; }),
+        rvTaxPlain: r.tax.toFixed(2), rvScanTotal: r.flag && r.flag.type === 'total' ? '' : (r.total == null ? '' : r.total.toFixed(2)),
+        rvTotalMark: r.flag && r.flag.type === 'total' ? 'rgba(217,72,15,0.14)' : 'transparent',
+        zoom: s.zoom, zoomLabel: s.zoom > 1 ? 'Zoom out' : 'Zoom in', zoomPressed: s.zoom > 1 ? 'true' : 'false', toggleZoom: function () { self.setState({ zoom: s.zoom > 1 ? 1 : 1.6 }); },
+        rvHasReason: !!r.reason, rvReasonText: r.flag ? r.reason + '. We highlighted the spot on the receipt and the field that needs you.' : (r.reason ? r.reason + '.' : ''),
+        rvCat: s.rcat, onCat: function (e) { self.setState({ rcat: e.target.value }); },
+        rvLearn: s.rcat !== s.origCat, rvLearnText: 'Got it. Future ' + r.merchant + ' receipts will go to ' + s.rcat + '.',
+        rvItems: r.items.map(function (it, i) { var f = i === flagIdx; return { name: it[0], value: s.items[i], readOnly: !f, aria: 'Price of ' + it[0], border: f ? '2px solid #D9480F' : '1px solid transparent', bg: f ? '#FFF6EE' : '#F5F6F8', onChange: function (e) { var nx = s.items.slice(); nx[i] = e.target.value; self.setState({ items: nx }); } }; }),
+        rvSumStr: money(itemSum), rvTaxStr: money(r.tax), rvTotal: s.total, onTotal: function (e) { self.setState({ total: e.target.value }); },
+        rvTotalBorder: r.flag && r.flag.type === 'total' ? '2px solid #D9480F' : '1px solid #D5D9DF', rvTotalBg: r.flag && r.flag.type === 'total' ? '#FFF6EE' : '#FFFFFF',
+        rvCheck: ok ? '✓ Items and tax match the total' : (!complete ? 'Fill in the highlighted field' : 'Off by ' + money(Math.abs(tot - expected)) + ' · items + tax = ' + money(expected)),
+        rvCheckColor: ok ? '#2B7A4B' : (!complete ? '#5A606B' : '#B4471F'), rvCantSave: !ok, rvSaveOp: ok ? 1 : 0.4,
+        rvInQueue: inQ, rvConfirmLabel: inQ ? 'Confirm and next' : (r.status === 'review' ? 'Confirm and file' : 'Save changes'),
+        rvSkip: function () { if (qi < queue.length - 1) self.load(queue[qi + 1].id, true); else if (queue.length > 1) self.load(queue[0].id, true); },
+        rvConfirm: function () {
+          if (!ok) return;
+          var learned = s.rcat !== s.origCat, items = r.items.map(function (it, i) { return [it[0], vals[i]]; });
+          var next = receipts.map(function (x) {
+            if (x.id === r.id) return Object.assign({}, x, { items: items, total: tot, cat: s.rcat, status: 'filed', reason: null, flag: null });
+            if (learned && x.merchant === r.merchant && x.status === 'review') return Object.assign({}, x, { cat: s.rcat });
+            return x;
+          });
+          self.setState({ receipts: next });
+          var left = next.filter(function (x) { return x.status === 'review'; }).length;
+          if (inQ) { goNext(next, qi); if (left) self.toastMsg('Filed. ' + left + ' left.'); } else { self.setState({ rvId: null }); self.toastMsg('Saved.'); }
+        }
+      };
+    }
+
+    var animA = s.flip ? 'rb' : 'ra';
+    return Object.assign({
+      onKey: function (e) {
+        var tag = (e.target && e.target.tagName) || '';
+        var typing = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+        if (s.signedOut) return;
+        if (e.key === 'Escape' && (s.acct || s.shortcuts)) { self.setState({ acct: false, shortcuts: false }); return; }
+        if (e.key === 'Escape') { if (s.adding) { self.setState({ adding: false }); return; } if (s.rvId != null || s.rvDone) { self.setState({ rvId: null, rvDone: false }); return; } self.setState({ query: '', cat: null, wday: null }); if (typing) e.target.blur(); return; }
+        if (typing || s.rvId != null || s.adding || s.shortcuts) return;
+        if (e.key === '?') { self.setState({ shortcuts: true, acct: false }); return; }
+        if (e.key === 'ArrowLeft') { self.setMonth(idx - 1); e.preventDefault(); }
+        else if (e.key === 'ArrowRight') { self.setMonth(idx + 1); e.preventDefault(); }
+        else if (e.key === '/') { var el = document.getElementById(s.view === 'receipts' ? 'sb-search-r' : 'sb-search'); if (el) { el.focus(); e.preventDefault(); } }
+        else if (/^[1-8]$/.test(e.key)) { self.setCat(CATS[Number(e.key) - 1]); }
+        else if (e.key === '0') { self.setCat(null); }
+      },
+      tabsTop: [['insights', 'Insights'], ['receipts', 'Receipts']].map(function (t) {
+        var on = s.view === t[0];
+        return { label: t[1], current: on ? 'page' : 'false', weight: on ? 600 : 500, color: on ? '#14161A' : '#5A606B', line: on ? '#14161A' : 'transparent',
+          hasBadge: t[0] === 'receipts' && queue.length > 0, badge: queue.length, go: function () { self.setState({ view: t[0] }); } };
+      }),
+      isInsights: s.view === 'insights', isReceipts: s.view === 'receipts',
+      monthLabel: m.label, atFirst: idx === 0, atLast: idx === 5, prevOp: idx === 0 ? 0.3 : 1, nextOp: idx === 5 ? 0.3 : 1,
+      prevMonth: function () { self.setMonth(idx - 1); }, nextMonth: function () { self.setMonth(idx + 1); },
+      query: s.query, onQuery: function (e) { self.setState({ query: e.target.value }); },
+      chips: [{ label: 'All', c: null }].concat(CATS.map(function (c) { return { label: c, c: c }; })).map(function (x) {
+        var on = cat === x.c;
+        return { label: x.label, hasDot: !!x.c, dot: x.c ? COLORS[x.c] : '', pressed: on ? 'true' : 'false', weight: on ? 600 : 500,
+          color: on && !x.c ? '#FFFFFF' : '#14161A', bg: on ? (x.c ? tint(COLORS[x.c], 0.82) : '#14161A') : '#FFFFFF', border: on ? (x.c ? COLORS[x.c] : '#14161A') : '#E3E6EA', pick: function () { self.setCat(x.c); } };
+      }),
+      animA: animA, growAnim: s.flip ? 'gb' : 'ga',
+      mini: mini, spine: spine, connPoints: connPoints, daily: daily, dayTicks: dayTicks,
+      dailyAria: m.label + ' spending by day', biggestDay: 'Biggest day ' + bigWd + ', ' + m.key + ' ' + (bigI + 1) + ', ' + money(dailyVals[bigI] || 0),
+      hasQueue: queue.length > 0,
+      queueHeadline: queue.length + (queue.length === 1 ? ' receipt needs a look.' : ' receipts need a look.'),
+      queueSub: 'We couldn’t read part of them, so these totals may be off until you check. About 20 seconds each.',
+      startReview: function () { if (queue.length) self.load(queue[0].id, true); },
+      a1: a1, a2: a2, a3: a3, a4: a4, catRows: catRows, merchants: merchants, merchNote: merchNote, weekBars: weekBars, sizes: sizes,
+      merchHint: partial ? 'Click a merchant to see its receipts.' + (q ? ' Filtered by \u201c' + s.query + '\u201d.' : '') : 'Ranked by what you spent there.',
+      weekHint: s.wday != null ? WD[s.wday] + 's are highlighted in the day-by-day chart above. Click again to clear.' : 'Click a day to find it in the day-by-day chart above.',
+      vsLabel: prev ? (partial ? 'vs ' + prev.key + ' 1–' + m.partial : 'vs ' + prev.key) : '',
+      catNote: (partial ? 'Compared with the same ' + m.partial + ' days of ' + (prev ? prev.label : '') + '. Striped: still waiting on you. ' : '') + 'Click a category to focus the page on it.',
+      rTabs: rTabs, groups: groups, processing: s.processing, listEmpty: !groups.length && !s.processing,
+      emptyTitle: q ? 'No receipts match “' + s.query + '”' : (s.rTab === 'review' ? 'Nothing needs a look.' : 'No receipts yet'),
+      emptySub: q ? 'Try a merchant name or an item.' : (s.rTab === 'review' ? 'Every receipt this month is filed.' : 'Add your first receipt to get started.'),
+      reviewing: r != null || s.rvDone, rvDone: s.rvDone, doneSub: filed.length + ' receipts filed for November. Nothing is waiting on you.',
+      closeReview: function () { self.setState({ rvId: null, rvDone: false, view: s.rvDone ? 'insights' : s.view }); },
+      adding: s.adding, openAdd: function () { self.setState({ adding: true }); }, closeAdd: function () { self.setState({ adding: false }); },
+      simulateUpload: function () {
+        if (s.processing) return;
+        self.setState({ adding: false, view: 'receipts', rTab: 'all', processing: true });
+        self.later(function () {
+          var id = Date.now();
+          var fresh = { id: id, merchant: 'Sysco', cat: 'Groceries', day: 7, items: [['Produce Order', 98.60], ['Dairy Order', 54.25]], tax: 0, total: 152.85, status: 'review', reason: 'New receipt — confirm what we read', flag: null };
+          self.setState({ processing: false, freshId: id, receipts: [fresh].concat(self.state.receipts) });
+          self.toastMsg('Sysco receipt read. Give it a quick look.');
+        }, 2400);
+      },
+      acctOpen: s.acct, acctExpanded: s.acct ? 'true' : 'false', acctBorder: s.acct ? '#14161A' : '#E3E6EA', acctBg: s.acct ? '#F1F3F6' : '#FFFFFF',
+      toggleAcct: function () { self.setState({ acct: !s.acct }); }, closeAcct: function () { self.setState({ acct: false }); },
+      shortcutsOpen: s.shortcuts, openShortcuts: function () { self.setState({ shortcuts: true, acct: false }); }, closeShortcuts: function () { self.setState({ shortcuts: false }); },
+      shortcutRows: [['Previous / next month', '\u2190 \u2192'], ['Focus a category', '1\u20138'], ['Show all categories', '0'], ['Search merchants', '/'], ['Clear filters, close panels', 'Esc'], ['Show this list', '?']].map(function (k) { return { what: k[0], key: k[1] }; }),
+      signedOut: s.signedOut, signOut: function () { self.setState({ acct: false, signedOut: true, register: false }); },
+      signIn: function (e) { e.preventDefault(); self.setState({ signedOut: false, view: 'insights' }); self.toastMsg(s.register ? 'Account created. Add your first receipt.' : 'Welcome back.'); },
+      siToggle: function () { self.setState({ register: !s.register }); },
+      siTitle: s.register ? 'Create your account' : 'Sign in', siButton: s.register ? 'Create account' : 'Sign in',
+      siHint: s.register ? 'At least 8 characters.' : '', siSwitchText: s.register ? 'Already have an account?' : 'New to Shoebox?', siSwitchLink: s.register ? 'Sign in' : 'Create an account',
+      hasToast: !!s.toast, toast: s.toast
+    }, hero, rv);
+  }
+}
+</script>
+</body>
+</html>

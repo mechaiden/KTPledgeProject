@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from './auth.jsx'
+import BoxMark from './BoxMark.jsx'
 
 export default function LoginPage() {
   const { login, register } = useAuth()
@@ -22,38 +23,41 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="login">
-      <p className="wordmark">KTPledge</p>
-      <h1>{isNew ? 'Create an account' : 'Log in'}</h1>
-
-      <form onSubmit={handleSubmit}>
+    <main className="login-page">
+      <form className="login-card" onSubmit={handleSubmit} aria-labelledby="login-h">
+        <p className="wordmark login-mark"><BoxMark />Shoebox</p>
+        <div>
+          <h1 id="login-h">{isNew ? 'Create your account' : 'Sign in'}</h1>
+          <p className="login-lede">Snap a receipt. Shoebox files it and only asks when it isn’t sure.</p>
+        </div>
         <label className="field">
-          <span>Email</span>
+          Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
         </label>
         <label className="field">
-          <span>Password{isNew && <small> (at least 8 characters)</small>}</span>
+          Password
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={isNew ? 'new-password' : 'current-password'}
             minLength={isNew ? 8 : undefined}
+            aria-describedby={isNew ? 'pw-rule' : undefined}
             required
           />
+          {isNew && <small id="pw-rule">At least 8 characters</small>}
         </label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit" className="button primary" disabled={submitting}>
-          {isNew ? 'Create account' : 'Log in'}
+        {error && <p className="error" role="alert">{error}</p>}
+        <button type="submit" className="button primary login-submit" disabled={submitting}>
+          {submitting ? (isNew ? 'Creating account…' : 'Signing in…') : isNew ? 'Create account' : 'Sign in'}
         </button>
+        <p className="login-switch">
+          {isNew ? 'Already have an account?' : 'New to Shoebox?'}{' '}
+          <button type="button" className="link" onClick={() => { setIsNew(!isNew); setError('') }}>
+            {isNew ? 'Sign in' : 'Create an account'}
+          </button>
+        </p>
       </form>
-
-      <p className="login-switch">
-        {isNew ? 'Already have an account?' : 'No account yet?'}{' '}
-        <button type="button" className="link" onClick={() => { setIsNew(!isNew); setError('') }}>
-          {isNew ? 'Log in' : 'Create one'}
-        </button>
-      </p>
     </main>
   )
 }
