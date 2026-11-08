@@ -1,3 +1,8 @@
+import threading
+from contextlib import asynccontextmanager
+
+from .pipeline.parser import warm_up
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -14,7 +19,12 @@ from .routes import router
 Base.metadata.create_all(bind=engine)
 fail_interrupted_receipts()
 
-app = FastAPI()
+async def lifespan(app):
+    threading.Thread(target=warm_up, daemon=True).start()
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
