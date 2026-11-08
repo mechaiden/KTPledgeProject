@@ -1,33 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Plus, RotateCw, Upload } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import { api } from './api.js'
 import CommandBar from './CommandBar.jsx'
+import Findings, { YearSoFar } from './Findings.jsx'
 import Hero, { ReviewStrip } from './Hero.jsx'
 import MonthlyChart from './MonthlyChart.jsx'
-import {
-  addMonths,
-  currentMonth,
-  formatMoney,
-  formatMonth,
-  formatMonthName,
-  formatShortMonth,
-  formatWholeMoney,
-} from './format.js'
+import { addMonths, currentMonth, formatMonth, formatMonthName } from './format.js'
 
-// Spending stats for one month, drawn from the /api/insights endpoints.
-// Charts are plain HTML and CSS; each card loads and fails on its own.
+// Insights for one month. Month totals come from the trend endpoint; everything that has to
+// follow the category filter or the merchant search is computed from the receipt list (stats.js).
 
 const ENDPOINTS = {
-  categories: (month) => `/insights/categories?month=${month}`,
   // A fixed six-month window ending this month, so the chart doesn't shift on every click;
   // it only moves when you step back past its left edge
   trend: (month) => `/insights/trend?month=${month >= addMonths(currentMonth(), -5) ? currentMonth() : month}&months=6`,
-  merchants: (month) => `/insights/merchants?month=${month}&limit=5`,
-  weekdays: (month) => `/insights/weekdays?month=${month}`,
-  receiptSize: (month) => `/insights/receipt-size?month=${month}`,
   savings: (month) => `/insights/savings?year=${month.slice(0, 4)}`,
 }
 const KEYS = Object.keys(ENDPOINTS)
+
+const ICON = { size: 16, strokeWidth: 2, 'aria-hidden': true }
 
 // While a new month loads, each card keeps showing the last data it had, so nothing jumps.
 function useInsights(month) {
@@ -67,298 +58,8 @@ function useInsights(month) {
   )
   // Plain values for rendering, plus which month each one describes (it lags during a switch)
   const values = Object.fromEntries(Object.entries(data).map(([key, entry]) => [key, entry?.value]))
-  return { data: values, dataMonth: data.categories?.month ?? month, errors, retry }
+  return { data: values, errors, retry }
 }
-
-// True only once `active` has stayed true for `ms`, so fast loads never flash a skeleton
-function useDelayedFlag(active, ms = 300) {
-  const [shown, setShown] = useState(false)
-  useEffect(() => {
-    if (!active) return
-    const timer = setTimeout(() => setShown(true), ms)
-    return () => {
-      clearTimeout(timer)
-      setShown(false)
-    }
-  }, [active, ms])
-  return active && shown
-}
-
-const sum = (rows, key) => rows.reduce((total, row) => total + row[key], 0)
-
-
-const ICON = { size: 16, strokeWidth: 2, 'aria-hidden': true }
-
-// Up means more spending (worse), down means less (better). Color always comes with an arrow.
-function Delta({ amount, children }) {
-  if (Math.abs(amount) < 0.5) return <span className="delta">{children ?? 'No change'}</span>
-  const up = amount > 0
-  return (
-    <span className={`delta ${up ? 'is-up' : 'is-down'}`}>
-      {up ? <ArrowUp {...ICON} /> : <ArrowDown {...ICON} />}
-      {children ?? <span className="mono">{formatWholeMoney(Math.abs(amount))}</span>}
-    </span>
-  )
-}
-
-// ---------- Card frame: title, then content, a skeleton, or an inline error ----------
-
-function Card({ title, lead, className = '', error, onRetry, loading, skeleton, children, ...rest }) {
-  const showSkeleton = useDelayedFlag(loading)
-  let body = children
-  if (error) {
-    body = (
-      <div className="card-error" role="alert">
-        <p>Couldn’t load this. {error}</p>
-        <button type="button" className="button" onClick={onRetry}>
-          <RotateCw {...ICON} />
-          Retry
-        </button>
-      </div>
-    )
-  } else if (loading) {
-    body = showSkeleton ? skeleton : <div style={{ minHeight: 'var(--skeleton-min, 120px)' }} />
-  }
-
-  return (
-    <section className={`card ${className}`} aria-busy={loading || undefined} {...rest}>
-      {title && (
-        <header className="card-head">
-          <h2>{title}</h2>
-          {lead && !error && !loading && <p className="card-lead">{lead}</p>}
-        </header>
-      )}
-      {body}
-    </section>
-  )
-}
-
-function SkeletonRows({ rows = 5 }) {
-  return (
-    <div className="skeleton-rows" aria-hidden="true">
-      {Array.from({ length: rows }, (_, i) => (
-        <span key={i} className="skeleton" style={{ width: `${92 - ((i * 17) % 40)}%` }} />
-      ))}
-    </div>
-  )
-}
-
-function SkeletonChart() {
-  return <span className="skeleton skeleton-chart" aria-hidden="true" />
-}
-
-// ---------- Month switcher ----------
-
-
-// ---------- Category bars ----------
-
-function CategoryBars({ month, categories, error, onRetry }) {
-  const rows = (categories ?? []).filter((c) => c.total > 0).sort((a, b) => b.total - a.total)
-  const max = Math.max(...rows.map((c) => c.total), 1)
-  const prevShort = formatShortMonth(addMonths(month, -1))
-  const lead =
-    month === currentMonth()
-      ? `Change is against all of ${formatMonthName(addMonths(month, -1))}.`
-      : `Change is against ${formatMonthName(addMonths(month, -1))}.`
-
-  return (
-    <Card
-      title="Where it went"
-      lead={lead}
-      className="area-categories"
-      error={error}
-      onRetry={onRetry}
-      loading={!categories && !error}
-      skeleton={<SkeletonRows rows={6} />}
-    >
-      <table className="cat-table">
-        <thead className="sr-only">
-          <tr>
-            <th scope="col">Category</th>
-            <th scope="col">Share</th>
-            <th scope="col">Spent</th>
-            <th scope="col">Change vs {prevShort}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((c) => (
-            <tr key={c.category}>
-              <th scope="row" className="cat-name">
-                <span className="cat-label">
-                  <span className="swatch" data-category={c.category} />
-                  {c.category}
-                </span>
-              </th>
-              <td className="cat-bar" aria-hidden="true">
-                <span className="bar-track">
-                  <span className="bar-fill" data-category={c.category} style={{ transform: `scaleX(${c.total / max})` }} />
-                </span>
-              </td>
-              <td className="num">{formatMoney(c.total)}</td>
-              <td className="num cat-change">
-                {c.prevTotal > 0 || c.change !== 0 ? <Delta amount={c.change} /> : <span className="delta">New</span>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
-  )
-}
-
-// ---------- Top merchants ----------
-
-function TopMerchants({ merchants, error, onRetry }) {
-  return (
-    <Card
-      title="Top merchants"
-      className="area-merchants"
-      error={error}
-      onRetry={onRetry}
-      loading={!merchants && !error}
-      skeleton={<SkeletonRows rows={5} />}
-    >
-      {merchants?.length === 0 ? (
-        <p className="card-empty">No merchants this month.</p>
-      ) : (
-        <table className="ledger-table">
-          <thead>
-            <tr>
-              <th scope="col">Merchant</th>
-              <th scope="col" className="num">Visits</th>
-              <th scope="col" className="num col-avg">Per visit</th>
-              <th scope="col" className="num">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(merchants ?? []).map((m) => (
-              <tr key={m.merchantKey}>
-                <th scope="row" className="merchant-cell">{m.name ?? m.merchantKey}</th>
-                <td className="num">{m.visits}</td>
-                <td className="num col-avg">{formatMoney(m.avgPerVisit)}</td>
-                <td className="num">{formatMoney(m.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </Card>
-  )
-}
-
-// ---------- Day of week ----------
-
-function topTwoDays(weekdays) {
-  return [...weekdays].filter((d) => d.total > 0).sort((a, b) => b.total - a.total).slice(0, 2).map((d) => d.weekday)
-}
-
-function Weekdays({ weekdays, error, onRetry }) {
-  const days = weekdays ?? []
-  const max = Math.max(...days.map((d) => d.total), 1)
-  const top = topTwoDays(days)
-  const lead =
-    top.length === 2 ? `${top[0]}s and ${top[1]}s are your biggest days.` : top.length === 1 ? `${top[0]}s are your biggest day.` : null
-
-  return (
-    <Card
-      title="By day of the week"
-      lead={lead}
-      className="area-weekdays"
-      error={error}
-      onRetry={onRetry}
-      loading={!weekdays && !error}
-      skeleton={<SkeletonChart />}
-    >
-      <div className="weekdays" role="img" aria-label={days.map((d) => `${d.weekday} ${formatMoney(d.total)}`).join(', ')}>
-        {days.map((d) => {
-          const isTop = top.includes(d.weekday)
-          return (
-            <div key={d.weekday} className={`weekday${isTop ? ' is-top' : ''}`}>
-              <span className="weekday-amount mono">{isTop ? formatWholeMoney(d.total) : ''}</span>
-              <span className="weekday-bar" style={{ height: `${(d.total / max) * 100}%` }} />
-              <span className="weekday-name">{d.weekday.slice(0, 3)}</span>
-            </div>
-          )
-        })}
-      </div>
-    </Card>
-  )
-}
-
-// ---------- Typical receipt ----------
-
-function ReceiptSize({ sizes, error, onRetry }) {
-  return (
-    <Card
-      title="A typical receipt"
-      lead="The middle value per category, so one big trip doesn’t skew it."
-      className="area-size"
-      error={error}
-      onRetry={onRetry}
-      loading={!sizes && !error}
-      skeleton={<SkeletonRows rows={4} />}
-    >
-      <table className="ledger-table">
-        <thead>
-          <tr>
-            <th scope="col">Category</th>
-            <th scope="col" className="num">Receipts</th>
-            <th scope="col" className="num">Typical</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...(sizes ?? [])].sort((a, b) => b.count - a.count).map((s) => (
-            <tr key={s.category}>
-              <th scope="row" className="cat-name">
-                <span className="cat-label">
-                  <span className="swatch" data-category={s.category} />
-                  {s.category}
-                </span>
-              </th>
-              <td className="num">{s.count}</td>
-              <td className="num">{formatMoney(s.median)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
-  )
-}
-
-// ---------- Year so far ----------
-
-function Savings({ year, savings, error, onRetry }) {
-  return (
-    <Card
-      title={`${year} so far`}
-      className="area-savings"
-      error={error}
-      onRetry={onRetry}
-      loading={!savings && !error}
-      skeleton={<SkeletonRows rows={2} />}
-    >
-      {savings && (
-        <dl className="figures">
-          <div>
-            <dt>Saved with discounts</dt>
-            <dd className="mono">{formatMoney(savings.discountTotal)}</dd>
-          </div>
-          <div>
-            <dt>Paid in tax</dt>
-            <dd className="mono">{formatMoney(savings.taxTotal)}</dd>
-          </div>
-          <div>
-            <dt>Receipts counted</dt>
-            <dd className="mono">{savings.receiptCount}</dd>
-          </div>
-        </dl>
-      )}
-    </Card>
-  )
-}
-
-// ---------- Needs review ----------
-
 
 // ---------- Empty states ----------
 
@@ -422,14 +123,14 @@ function EmptyMonth({ month, latestMonth, onSelectMonth }) {
 
 // ---------- Page ----------
 
-export default function InsightsPage({ summary, receipts, onReview, onAddReceipts }) {
+export default function InsightsPage({ summary, receipts, onReview, onAddReceipts, onOpenMerchant }) {
   const [month, setMonth] = useState(currentMonth)
   // Filters shared by every section: one category at a time, plus a merchant search
   const [category, setCategory] = useState(null)
   const [query, setQuery] = useState('')
   // A weekday picked in the findings, highlighted in the day-by-day chart (Monday = 0)
   const [weekday, setWeekday] = useState(null)
-  const { data, dataMonth, errors, retry } = useInsights(month)
+  const { data, errors, retry } = useInsights(month)
 
   const changeMonth = useCallback((next) => {
     if (next <= currentMonth()) setMonth(next)
@@ -459,8 +160,9 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
     )
   }
 
-  const monthIsEmpty = data.categories && !errors.categories && sum(data.categories, 'total') === 0
-  const bind = (key) => ({ error: errors[key], onRetry: () => retry(key) })
+  const monthRow = data.trend?.find((row) => row.month === month)
+  const monthIsEmpty = data.trend && !errors.trend && (monthRow?.total ?? 0) === 0
+  const shared = { month, receipts, category, query, weekday, onCategory: setCategory, onWeekday: setWeekday, onOpenMerchant }
 
   return (
     <div className="insights">
@@ -486,8 +188,9 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
             category={category}
             receipts={receipts}
             trend={data.trend}
+            error={errors.trend}
+            onRetry={() => retry('trend')}
             onSelectMonth={changeMonth}
-            {...bind('trend')}
           />
           <ReviewStrip count={reviewCount} onReview={onReview} />
           <MonthlyChart
@@ -496,20 +199,12 @@ export default function InsightsPage({ summary, receipts, onReview, onAddReceipt
             category={category}
             receipts={receipts}
             weekday={weekday}
+            error={errors.trend}
+            onRetry={() => retry('trend')}
             onSelectMonth={changeMonth}
-            {...bind('trend')}
           />
-          <div className="insights-grid">
-            <div className="insights-col">
-              <CategoryBars month={dataMonth} categories={data.categories} {...bind('categories')} />
-              <TopMerchants merchants={data.merchants} {...bind('merchants')} />
-              <ReceiptSize sizes={data.receiptSize} {...bind('receiptSize')} />
-            </div>
-            <div className="insights-col">
-              <Weekdays weekdays={data.weekdays} {...bind('weekdays')} />
-              <Savings year={month.slice(0, 4)} savings={data.savings} {...bind('savings')} />
-            </div>
-          </div>
+          {receipts && <Findings {...shared} />}
+          <YearSoFar year={month.slice(0, 4)} savings={data.savings} />
         </>
       )}
     </div>

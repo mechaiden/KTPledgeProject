@@ -10,10 +10,13 @@ import ReceiptsPage from './ReceiptsPage.jsx'
 
 // The view lives in the URL hash so a refresh or the back button keeps your place.
 // "#receipts/review" is the Receipts view opened on the Needs review tab.
+// "#receipts?q=Amazon" opens Receipts searched to that merchant.
 function routeFromHash() {
-  const [view, filter] = window.location.hash.slice(1).split('/')
-  if (view === 'receipts') return { view, reviewOnly: filter === 'review' }
-  return { view: 'insights', reviewOnly: false }
+  const [path, search = ''] = window.location.hash.slice(1).split('?')
+  const [view, filter] = path.split('/')
+  const query = new URLSearchParams(search).get('q') ?? ''
+  if (view === 'receipts') return { view, reviewOnly: filter === 'review', query }
+  return { view: 'insights', reviewOnly: false, query: '' }
 }
 
 function useRoute() {
@@ -159,6 +162,7 @@ export default function App() {
             summary={summary}
             receipts={receipts}
             onReview={() => navigate('receipts/review')}
+            onOpenMerchant={(name) => navigate(`receipts?q=${encodeURIComponent(name)}`)}
             onAddReceipts={addReceipts}
           />
         </main>

@@ -363,74 +363,6 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 .month-steps { display: flex; gap: var(--space-1); }
 .month-steps .icon-button { border-color: var(--rule); background: var(--surface); }
 
-/* Two independent columns, so no card stretches to match its neighbor */
-.insights-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
-.insights-col { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-
-/* Category bars */
-.cat-table { width: 100%; }
-.cat-table td, .cat-table th { padding: var(--space-2) 0; }
-.cat-table tr + tr > * { border-top: 1px dashed var(--rule); }
-.cat-name { font-weight: 500; text-align: left; white-space: nowrap; }
-.cat-label { display: inline-flex; align-items: center; gap: var(--space-2); }
-.cat-table .cat-name { width: 132px; }
-.cat-bar { padding-right: var(--space-4) !important; padding-left: var(--space-2) !important; }
-.bar-track { display: block; height: 8px; border-radius: var(--radius-bar); background: var(--wash); overflow: hidden; }
-.bar-fill { display: block; height: 100%; border-radius: var(--radius-bar); transform-origin: left; }
-.cat-table .num { width: 88px; }
-.cat-change { width: 76px !important; }
-
-/* Receipt-style tables: mono columns, dashed dividers */
-.ledger-table { width: 100%; font-size: var(--text-14); }
-.ledger-table thead th {
-  padding: 0 0 var(--space-2);
-  border-bottom: 1px solid var(--rule);
-  color: var(--ink-soft);
-  font-size: var(--text-12);
-  font-weight: 500;
-  text-align: left;
-}
-.ledger-table thead th.num { font-family: var(--sans); text-align: right; }
-.ledger-table td, .ledger-table tbody th { padding: var(--space-2) 0; }
-.ledger-table tbody tr + tr > * { border-top: 1px dashed var(--rule); }
-.ledger-table th + th, .ledger-table td { padding-left: var(--space-4); }
-.merchant-cell {
-  max-width: 0;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-  text-align: left;
-}
-
-/* Day of week: the two biggest days in ink */
-.weekdays { display: flex; align-items: stretch; gap: var(--space-2); height: 140px; }
-.weekday {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-1);
-}
-.weekday-amount { min-height: 18px; font-size: var(--text-12); }
-.weekday-bar {
-  width: 100%;
-  max-width: 32px;
-  min-height: 2px;
-  border-radius: var(--radius-bar) var(--radius-bar) 0 0;
-  background: var(--rule-strong);
-}
-.weekday.is-top .weekday-bar { background: var(--ink); }
-.weekday-name { margin-top: var(--space-1); font-size: var(--text-12); color: var(--ink-soft); }
-.weekday.is-top .weekday-name { color: var(--ink); font-weight: 600; }
-
-/* Year so far */
-.figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
-.figures dt { color: var(--ink-soft); font-size: var(--text-13); }
-.figures dd { margin-top: var(--space-1); font-size: var(--text-20); font-weight: 500; }
-
 /* Empty states */
 .empty-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
 .empty-card h2 { font-size: var(--text-20); }
@@ -454,31 +386,6 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 
 @media (min-width: 1024px) {
   .insights-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-}
-
-/* One column: flatten the two columns into one list and put the review card near the top */
-@media (max-width: 1023px) {
-  .total-grid { grid-template-columns: auto minmax(0, 1fr); gap: var(--space-6) var(--space-12); }
-  .total-facts {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    gap: var(--space-8);
-    padding: var(--space-2) 0 0;
-    border-left: none;
-    border-top: 1px dashed var(--rule-strong);
-  }
-  .total-facts div { flex: 1; }
-  .total-facts div + div { border-top: none; }
-
-  .insights-col { display: contents; }
-  .insights-grid > .insights-col > * { order: 10; }
-  .insights-grid .area-review { order: 0; }
-  .insights-grid .area-categories { order: 1; }
-  .insights-grid .area-trend { order: 2; }
-  .insights-grid .area-merchants { order: 3; }
-  .insights-grid .area-weekdays { order: 4; }
-  .insights-grid .area-size { order: 5; }
-  .insights-grid .area-savings { order: 6; }
 }
 
 /* ============================================================
@@ -1025,4 +932,88 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
   .month-col { padding: 4px 2px 0; }
   .month-total { font-size: 11px; }
   .month-ghost { font-size: 0; } /* the dashed outline alone; no room for the label */
+}
+
+/* ============================================================
+   Findings: four always-open cards, each titled with its answer
+   ============================================================ */
+.findings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+  gap: 20px;
+}
+.finding-title { margin: 0 0 var(--space-4); font-size: 19px; font-weight: 400; line-height: 1.35; text-wrap: pretty; }
+.finding-title strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.grid-head, .grid-row { display: grid; gap: 10px; align-items: center; }
+.grid-head { padding-bottom: var(--space-2); border-bottom: 1px solid var(--rule); color: var(--ink-soft); font-size: 13.5px; }
+.grid-row {
+  width: 100%;
+  min-height: var(--target);
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--wash);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-15);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+@media (hover: hover) {
+  .grid-row:hover { background: var(--canvas); }
+}
+.cat-grid { grid-template-columns: minmax(136px, 1.2fr) minmax(60px, 1.6fr) 90px 48px 76px; }
+.merch-grid { grid-template-columns: minmax(0, 1fr) 54px 84px 92px 16px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.right { text-align: right; }
+.soft { color: var(--ink-soft); }
+.small { font-size: 13.5px; }
+.truncate { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cat-name { display: flex; align-items: center; gap: var(--space-2); min-width: 0; font-weight: 500; }
+.swatch-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: var(--radius-bar); background: var(--cat); }
+.swatch-dot.small { width: 8px; height: 8px; }
+.cat-track { display: block; height: 7px; overflow: hidden; border-radius: var(--radius-card); background: var(--wash); }
+.cat-fill { display: block; height: 100%; background: var(--cat); transform-origin: left; transition: transform var(--duration) var(--ease); }
+.cat-grid[aria-pressed='true'] { background: color-mix(in srgb, var(--cat) 10%, var(--surface)); box-shadow: inset 3px 0 0 var(--cat); }
+.cat-grid[aria-pressed='true'] .cat-name { font-weight: 700; }
+.row-arrow { color: var(--ink-soft); }
+.finding-foot { margin-top: 10px; color: var(--ink-soft); font-size: 13.5px; }
+
+.week { display: flex; align-items: flex-end; gap: 10px; height: 200px; }
+.week-col {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.week-amount { min-height: 18px; color: var(--ink); font-size: 12.5px; font-weight: 500; }
+.week-bar { display: block; width: 100%; max-width: 40px; border-radius: var(--radius-bar) var(--radius-bar) 0 0; background: var(--bar-idle); }
+.week-bar.is-ink { background: var(--ink); }
+.week-col[aria-pressed='true'] .week-bar { outline: 2px solid var(--ink); outline-offset: 2px; }
+.week-label { color: var(--ink-muted); font-size: 13.5px; }
+.week-label.is-ink { color: var(--ink); font-weight: 600; }
+
+.typical { width: 100%; border-collapse: collapse; font-size: var(--text-15); }
+.typical th, .typical td { height: var(--target); padding: 0 0 0 10px; border-bottom: 1px solid var(--wash); text-align: left; font-weight: 400; }
+.typical th:first-child { padding-left: 0; }
+.typical thead th { height: auto; padding-bottom: var(--space-2); border-bottom-color: var(--rule); color: var(--ink-soft); font-size: 13.5px; }
+.typical .num, .typical .right { text-align: right; }
+.typical tr.is-faded { opacity: 0.45; }
+
+.year-line { margin: var(--space-1) var(--space-1) 0; color: var(--ink-soft); font-size: var(--text-14); }
+.year-line strong, .year-line .mono { color: var(--ink); }
+
+@media (max-width: 640px) {
+  .cat-grid { grid-template-columns: minmax(0, 1fr) 80px 40px 64px; }
+  .cat-grid > :nth-child(2) { display: none; } /* bar track: no room on a phone */
+  .merch-grid { grid-template-columns: minmax(0, 1fr) 36px 76px 16px; }
+  .merch-grid > :nth-child(3) { display: none; } /* per visit */
+  .week { height: 160px; gap: 6px; }
 }
