@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { api } from './api.js'
 import { addMonths, currentMonth, formatDate, formatMoney, formatMonth, formatMonthName, monthOf } from './format.js'
-import ReceiptEditor from './ReceiptEditor.jsx'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf']
 const POLL_MS = 3000
@@ -68,14 +67,13 @@ function ReceiptRow({ receipt: r, onOpen }) {
   )
 }
 
-export default function ReceiptsPage({ initialReviewOnly = false, initialQuery = '', pendingUpload = null, onPendingUploadHandled, onReceiptsChange }) {
-  const [receipts, setReceipts] = useState(null) // null while the first load is in flight
-  const [categories, setCategories] = useState([])
+export default function ReceiptsPage({ receipts, initialReviewOnly = false, initialQuery = '', pendingUpload = null, onPendingUploadHandled, onReceiptsChange, onOpenReceipt }) {
+  // The list lives in App so Review, Insights and the badge all see the same receipts
+  const setReceipts = onReceiptsChange
   const [loadError, setLoadError] = useState('')
   const [month, setMonth] = useState(currentMonth)
   const [tab, setTab] = useState(initialReviewOnly ? 'review' : 'all')
   const [query, setQuery] = useState(initialQuery)
-  const [selectedId, setSelectedId] = useState(null)
   const [uploadErrors, setUploadErrors] = useState([])
   const [dragging, setDragging] = useState(false)
   // Uploads that finished reading but are dated in another month, so they've left the current view
@@ -93,18 +91,11 @@ export default function ReceiptsPage({ initialReviewOnly = false, initialQuery =
         if (moved.length) setFiledElsewhere((prev) => [...prev, ...moved])
         setReceipts(next)
       }),
-    [],
+    [setReceipts],
   )
-
-  // Keep the shell's review badge and Insights in step with this list
-  useEffect(() => {
-    if (receipts) onReceiptsChange?.(receipts)
-  }, [receipts, onReceiptsChange])
-
 
   useEffect(() => {
     refresh().catch((err) => setLoadError(err.message))
-    api('/categories').then(setCategories).catch((err) => setLoadError(err.message))
   }, [refresh])
 
   // Keep checking back while anything is still being read
@@ -168,15 +159,7 @@ export default function ReceiptsPage({ initialReviewOnly = false, initialQuery =
     upload(e.dataTransfer.files)
   }
 
-  function handleSaved(updated) {
-    setReceipts((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
-    setSelectedId(null)
-  }
 
-  function handleDeleted(id) {
-    setReceipts((prev) => prev.filter((r) => r.id !== id))
-    setSelectedId(null)
-  }
 
   // A search looks across every month; otherwise the list is one month
   const q = query.trim().toLowerCase()
@@ -194,7 +177,6 @@ export default function ReceiptsPage({ initialReviewOnly = false, initialQuery =
     if (last && last.date === r.date) last.items.push(r)
     else groups.push({ date: r.date, items: [r] })
   }
-  const selected = receipts?.find((r) => r.id === selectedId) ?? null
   // Drop notices for receipts that were deleted or that the user has already gone to see
   const notices = filedElsewhere.filter(
     (r) => monthOf(r.date) !== month && receipts?.some((existing) => existing.id === r.id),
@@ -312,7 +294,7 @@ export default function ReceiptsPage({ initialReviewOnly = false, initialQuery =
               {groups.map((g) => (
                 <div key={g.date ?? 'none'} role="group" aria-label={dayLabel(g.date)}>
                   <div className="rgroup">{dayLabel(g.date)}</div>
-                  {g.items.map((r) => <ReceiptRow key={r.id} receipt={r} onOpen={setSelectedId} />)}
+                  {g.items.map((r) => <ReceiptRow key={r.id} receipt={r} onOpen={onOpenReceipt} />)}
                 </div>
               ))}
             </>
@@ -331,16 +313,6 @@ export default function ReceiptsPage({ initialReviewOnly = false, initialQuery =
         </div>
       )}
 
-      {selected && (
-        <ReceiptEditor
-          key={selected.id}
-          receipt={selected}
-          categories={categories}
-          onClose={() => setSelectedId(null)}
-          onSaved={handleSaved}
-          onDeleted={handleDeleted}
-        />
-      )}
     </div>
   )
 }

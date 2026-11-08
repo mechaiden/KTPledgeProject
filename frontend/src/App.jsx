@@ -7,6 +7,7 @@ import { monthOf } from './format.js'
 import InsightsPage from './InsightsPage.jsx'
 import LoginPage from './LoginPage.jsx'
 import ReceiptsPage from './ReceiptsPage.jsx'
+import Review from './Review.jsx'
 
 // The view lives in the URL hash so a refresh or the back button keeps your place.
 // "#receipts/review" is the Receipts view opened on the Needs review tab.
@@ -125,6 +126,15 @@ export default function App() {
   // Handed to the Receipts page once it's on screen: 'picker' opens the file picker, a FileList uploads those files
   const [pendingUpload, setPendingUpload] = useState(null)
   const uploadHandled = useCallback(() => setPendingUpload(null), [])
+  // Review: { queue: true } walks every receipt that needs a look; { id } opens one receipt
+  const [review, setReview] = useState(null)
+  const closeReview = useCallback(() => setReview(null), [])
+  const [toast, setToast] = useState(null)
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   useEffect(() => {
     if (user) refresh()
@@ -139,6 +149,18 @@ export default function App() {
   }
 
   const reviewCount = summary?.reviewCount ?? 0
+
+  function handleSaved(updated) {
+    const wasReview = receipts?.find((r) => r.id === updated.id)?.status === 'review'
+    update((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+    const left = reviewCount - (wasReview ? 1 : 0)
+    setToast(wasReview ? (left > 0 ? `Saved. ${left} left to review.` : 'Saved. Nothing left to review.') : 'Saved.')
+  }
+
+  function handleDeleted(id) {
+    update((prev) => prev.filter((r) => r.id !== id))
+    setToast('Receipt deleted.')
+  }
 
   return (
     <div className="app">
@@ -161,7 +183,7 @@ export default function App() {
           <InsightsPage
             summary={summary}
             receipts={receipts}
-            onReview={() => navigate('receipts/review')}
+            onReview={() => setReview({ queue: true })}
             onOpenMerchant={(name) => navigate(`receipts?q=${encodeURIComponent(name)}`)}
             onAddReceipts={addReceipts}
           />
@@ -173,9 +195,24 @@ export default function App() {
           initialQuery={route.query}
           pendingUpload={pendingUpload}
           onPendingUploadHandled={uploadHandled}
+          receipts={receipts}
           onReceiptsChange={update}
+          onOpenReceipt={(id) => setReview({ id })}
         />
       )}
+
+      {review && receipts && (
+        <Review
+          receipts={receipts}
+          openId={review.id}
+          queueMode={!!review.queue}
+          filedCount={receipts.filter((r) => r.status === 'done').length}
+          onClose={closeReview}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
+      )}
+      {toast && <div className="toast" role="status">{toast}</div>}
 
       <nav className="tabbar" aria-label="Main">
         <NavLinks view={route.view} reviewCount={reviewCount} />

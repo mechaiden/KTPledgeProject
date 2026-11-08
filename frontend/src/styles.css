@@ -22,6 +22,8 @@
   --review-border: #f4dcc6;
   --review-text: #5c4632;
   --review-button-border: #e3d0be;
+  --flag: #d9480f;          /* the one field that needs you */
+  --photo-wash: #eceef1;    /* behind the receipt photo */
 
   --dining: #e0702e;
   --groceries: #4c9a62;
@@ -439,65 +441,6 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 }
 /* Children would fire dragleave on the overlay as the cursor passes over them */
 .drop-overlay p { pointer-events: none; font-size: var(--text-28); font-weight: 600; }
-
-/* ============================================================
-   Receipt editor (restyled in slice 4; ported to tokens for now)
-   ============================================================ */
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  justify-content: flex-end;
-  background: var(--scrim);
-}
-.editor {
-  width: min(900px, 100%);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  box-shadow: var(--modal-shadow);
-}
-.editor-header,
-.editor-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-6);
-  border-bottom: 1px solid var(--rule);
-}
-.editor-header h2 { font-size: var(--text-16); }
-.editor-footer { border-top: 1px solid var(--rule); border-bottom: none; }
-.editor-footer .error { flex: 1; }
-.editor-actions { display: flex; gap: var(--space-2); margin-left: auto; }
-.editor-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
-.editor-image { overflow: auto; padding: var(--space-6); background: var(--wash); text-align: center; }
-.editor-image img { max-width: 100%; border: 1px solid var(--rule); }
-.editor-fields { overflow-y: auto; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
-.callout {
-  padding: var(--space-3);
-  border: 1px solid var(--review-border);
-  border-radius: var(--radius-card);
-  background: var(--review-wash);
-  color: var(--review-text);
-  font-size: var(--text-14);
-}
-.items { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; border: none; }
-.items legend { padding: 0; margin-bottom: var(--space-2); font-size: var(--text-13); font-weight: 500; }
-.items .link { align-self: flex-start; margin-top: 2px; font-size: var(--text-14); }
-.item-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 104px 32px; gap: var(--space-2); align-items: center; }
-.item-head { font-size: var(--text-12); color: var(--ink-soft); }
-.item-row input.num { font-family: var(--mono); }
-.item-row.missing input.num { border-color: var(--review-border); background: var(--review-wash); }
-.remove { padding: 0; border: none; background: none; font-size: 18px; color: var(--ink-soft); }
-.warn-text { font-size: var(--text-13); color: var(--review-text); }
-.totals { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--rule); }
-.totals label { display: grid; grid-template-columns: 1fr 128px; align-items: center; gap: var(--space-3); }
-.totals label > span { text-align: right; color: var(--ink-soft); }
-.totals input { font-family: var(--mono); text-align: right; }
-.totals .grand-total > span { color: var(--ink); font-weight: 600; }
 
 /* ============================================================
    Sign in (restyled in slice 6; ported to tokens for now)
@@ -1061,3 +1004,131 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
   .rrow > :nth-child(3) { grid-area: status; justify-self: end; }
   .rgroup { padding: 10px var(--space-4); }
 }
+
+/* ============================================================
+   Review: full screen, photo left, the flagged field right
+   ============================================================ */
+.review { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--surface); }
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.review-close { background: var(--canvas); }
+.review-title { font-size: var(--text-15); font-weight: 600; }
+.review-pos { color: var(--ink-soft); font-size: var(--text-13); }
+.review-steps { display: flex; gap: 6px; margin-left: auto; }
+.icon-button.bordered { border-color: var(--rule); background: var(--surface); }
+.review-body { display: flex; flex: 1 1 auto; flex-wrap: wrap; min-height: 0; overflow-y: auto; }
+.review-photo {
+  display: flex;
+  flex: 1 1 400px;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-6);
+  background: var(--photo-wash);
+}
+.review-photo-bar { display: flex; align-self: stretch; justify-content: space-between; align-items: center; color: var(--ink-soft); font-size: 13.5px; }
+.small-button { min-height: 32px; padding: 0 10px; font-size: 13.5px; font-weight: 600; }
+.review-photo-frame { width: 100%; max-width: 380px; max-height: 420px; overflow: auto; border-radius: var(--radius-card); background: var(--surface); }
+.review-photo-frame img { display: block; width: 100%; transform-origin: top left; transition: transform 220ms var(--ease); }
+.review-photo-frame.is-zoomed img { transform: scale(1.8); }
+.readout {
+  width: 100%;
+  max-width: 380px;
+  padding: 22px 20px 26px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.75;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.readout-head { font-size: var(--text-13); font-weight: 500; text-align: center; }
+.readout-date { color: var(--ink-soft); font-size: 12.5px; text-align: center; }
+.readout-rule { margin: 10px 0; border-top: 1px dashed var(--bar-idle); }
+.readout-line { display: flex; justify-content: space-between; gap: var(--space-2); margin: 0 -6px; padding: 0 6px; }
+.readout-total { font-weight: 500; }
+.readout-line.is-flagged { outline: 2px solid var(--flag); background: var(--review-wash); }
+.review-form {
+  display: flex;
+  flex: 1 1 420px;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  max-width: 640px;
+  padding: 28px var(--space-8) var(--space-8);
+}
+.flag-callout {
+  padding: var(--space-3) 14px;
+  border-left: 3px solid var(--flag);
+  background: var(--review-wash);
+  color: var(--review-text);
+  font-size: var(--text-14);
+  line-height: 1.45;
+}
+.review-merchant { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.review-date { margin-top: 2px; color: var(--ink-soft); font-size: var(--text-13); }
+.review-fields { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.review-form .field { flex: none; font-size: var(--text-13); font-weight: 600; gap: 6px; }
+.review-form .field input, .review-form .field select { font-weight: 400; }
+.review-category { max-width: 280px; }
+.learned { display: flex; align-items: center; gap: var(--space-2); margin-top: -10px; font-size: var(--text-13); }
+.review-items-head, .review-item { display: grid; grid-template-columns: minmax(0, 1fr) 120px; gap: var(--space-2); align-items: center; }
+.review-items-head { padding-bottom: 6px; border-bottom: 1px solid var(--rule); color: var(--ink-soft); font-size: 13.5px; }
+.review-item { padding: 6px 0; border-bottom: 1px solid var(--wash); }
+.money-input { min-height: var(--target); text-align: right; font-variant-numeric: tabular-nums; }
+.money-input[readonly] { border-color: transparent; background: transparent; }
+.money-input.is-flagged { border: 2px solid var(--flag); background: var(--review-wash); }
+.review-sums { display: flex; flex-direction: column; gap: var(--space-2); align-self: flex-end; width: 100%; max-width: 320px; }
+.sum-line { display: flex; justify-content: space-between; color: var(--ink-soft); font-size: var(--text-13); }
+.sum-total { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); font-size: var(--text-15); font-weight: 600; }
+.sum-total input { width: 140px; font-size: var(--text-16); }
+.sum-check { color: var(--up); font-size: 13.5px; text-align: right; }
+.sum-check.is-ok { color: var(--ink-soft); }
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+.review-actions .danger { margin-right: auto; color: var(--up); }
+.review-error { flex: 1 1 100%; text-align: right; }
+.review-done { display: flex; flex: 1 1 auto; flex-direction: column; justify-content: center; align-items: center; gap: 10px; padding: var(--space-8); text-align: center; }
+.review-done-title { font-size: var(--text-28); font-weight: 600; letter-spacing: -0.015em; }
+.review-done-sub { margin-bottom: var(--space-3); color: var(--ink-soft); }
+
+.toast {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  z-index: 40;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: var(--text-14);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 20%, transparent);
+  transform: translateX(-50%);
+  animation: toast-in 240ms var(--ease) both;
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+@media (max-width: 640px) {
+  .review-photo { padding: var(--space-4); }
+  .review-photo-frame { max-height: 240px; }
+  .review-form { padding: 20px var(--space-4) var(--space-6); }
+  .toast { bottom: calc(var(--tabbar-height) + var(--space-3)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-photo-frame img { transition: none; }
+  .toast { animation: toast-fade 150ms linear both; }
+}
+@keyframes toast-fade { from { opacity: 0; } }
