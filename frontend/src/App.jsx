@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChartColumn, CircleUser, LogOut, Plus, ReceiptText } from 'lucide-react'
+import { ChartColumn, LogOut, Plus, ReceiptText } from 'lucide-react'
 import { api } from './api.js'
+import BoxMark from './BoxMark.jsx'
 import { useAuth } from './auth.jsx'
 import { monthOf } from './format.js'
 import InsightsPage from './InsightsPage.jsx'
@@ -48,6 +49,13 @@ function CountBadge({ count, label }) {
   return <span className="count-badge" aria-label={label}>{count}</span>
 }
 
+// "rosa.tran@…" -> "RT", "demo@…" -> "DE"
+function initials(email) {
+  const parts = email.split('@')[0].split(/[._-]+/).filter(Boolean)
+  const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] ?? '?').slice(0, 2)
+  return letters.toUpperCase()
+}
+
 function AccountMenu({ email, onLogout }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -69,13 +77,13 @@ function AccountMenu({ email, onLogout }) {
     <div className="account" ref={ref}>
       <button
         type="button"
-        className="icon-button"
-        aria-label="Account"
+        className="avatar"
+        aria-label="Account menu"
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen(!open)}
       >
-        <CircleUser size={16} strokeWidth={2} aria-hidden="true" />
+        {initials(email)}
       </button>
       {open && (
         <div className="account-menu" role="menu">
@@ -133,7 +141,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="topbar-inner">
-          <a className="wordmark" href="#insights">KTPledge</a>
+          <a className="wordmark" href="#insights"><BoxMark />Shoebox</a>
           <nav className="topnav" aria-label="Main">
             <NavLinks view={route.view} reviewCount={reviewCount} />
           </nav>

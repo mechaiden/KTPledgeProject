@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from './auth.jsx'
+import BoxMark from './BoxMark.jsx'
 
 export default function LoginPage() {
   const { login, register } = useAuth()
@@ -23,7 +24,7 @@ export default function LoginPage() {
 
   return (
     <main className="login">
-      <p className="wordmark">KTPledge</p>
+      <p className="wordmark"><BoxMark />Shoebox</p>
       <h1>{isNew ? 'Create an account' : 'Log in'}</h1>
 
       <form onSubmit={handleSubmit}>
