@@ -920,7 +920,9 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
 .typical th:first-child { padding-left: 0; }
 .typical thead th { height: auto; padding-bottom: var(--space-2); border-bottom-color: var(--rule); color: var(--ink-soft); font-size: 13.5px; }
 .typical .num, .typical .right { text-align: right; }
-.typical tr.is-faded { opacity: 0.45; }
+/* Not the focused category: quieter text that still passes 4.5:1, dimmed swatch */
+.typical tr.is-faded, .typical tr.is-faded th { color: var(--ink-muted); }
+.typical tr.is-faded .swatch-dot { opacity: 0.45; }
 
 .year-line { margin: var(--space-1) var(--space-1) 0; color: var(--ink-soft); font-size: var(--text-14); }
 .year-line strong, .year-line .mono { color: var(--ink); }

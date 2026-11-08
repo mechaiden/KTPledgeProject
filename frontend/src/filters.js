@@ -13,7 +13,8 @@ export function useFilterKeys({ onStep, onCategory, onClear, searchRef }) {
   useEffect(() => {
     function onKeyDown(e) {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
-      if (document.querySelector('[role="dialog"], [aria-modal="true"]')) return
+      // A dialog or the account menu handles its own keys (Esc closes it instead of clearing filters)
+      if (document.querySelector('[role="dialog"], [aria-modal="true"], .account-menu')) return
       const typing = isTypingTarget(e.target)
       if (e.key === 'Escape') {
         onClear()
