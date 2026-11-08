@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tally — clickable prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F6F7F9}
+a{color:#121417}a:hover{color:#565C66}
+.num{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.press{transition:transform 120ms cubic-bezier(.23,1,.32,1)}
+.press:active{transform:scale(.97)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #121417;outline-offset:2px}
+.bar{transform-origin:left center;transition:transform 220ms cubic-bezier(.23,1,.32,1)}
+.seg{transition:opacity 180ms ease-out}
+.row{transition:background-color 120ms ease-out}
+@media (hover:hover){.row:hover{background:#F6F7F9}.mbar:hover{opacity:.85}}
+@keyframes printIn{from{transform:translateY(-10px);opacity:0}to{transform:none;opacity:1}}
+@keyframes feed{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@keyframes scan{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@keyframes rise{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+.printin{animation:printIn 320ms cubic-bezier(.23,1,.32,1) both}
+.feed{animation:feed 2.4s cubic-bezier(.4,0,.2,1) both}
+.scan{animation:scan 1.2s linear infinite}
+.toast{animation:rise 220ms cubic-bezier(.23,1,.32,1) both}
+.modal{animation:pop 240ms cubic-bezier(.23,1,.32,1) both}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:150ms!important;animation-iteration-count:1!important;transition-duration:150ms!important}}
+</style>
+</helmet>
+<div style="font-family: 'Instrument Sans', system-ui, sans-serif; color: #121417; background: #F6F7F9; min-height: 1240px; box-sizing: border-box; font-size: 14px; position: relative">
+
+  <!-- Top bar -->
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E2E5EA; position: sticky; top: 0; z-index: 5">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 10px; margin-right: 8px">
+        <div aria-hidden="true" style="width: 20px; height: 26px; background: #121417; clip-path: polygon(0 0,100% 0,100% 100%,83% 90%,67% 100%,50% 90%,33% 100%,17% 90%,0 100%)"></div>
+        <span style="font-weight: 700; font-size: 18px; letter-spacing: -0.01em">Tally</span>
+      </div>
+      <nav aria-label="Main" style="display: flex; gap: 4px; flex: 1 1 auto">
+        <button type="button" class="press" onClick="{{goInsights}}" aria-current="{{navInsightsCurrent}}" style="font: inherit; font-weight: 600; font-size: 14px; border: 0; cursor: pointer; padding: 0 14px; min-height: 40px; border-radius: 6px; background: {{navInsightsBg}}; color: {{navInsightsColor}}">Insights</button>
+        <button type="button" class="press" onClick="{{goReceipts}}" aria-current="{{navReceiptsCurrent}}" style="font: inherit; font-weight: 600; font-size: 14px; border: 0; cursor: pointer; padding: 0 14px; min-height: 40px; border-radius: 6px; display: flex; align-items: center; gap: 8px; background: {{navReceiptsBg}}; color: {{navReceiptsColor}}">Receipts
+          <sc-if value="{{hasReview}}" hint-placeholder-val="{{ true }}"><span class="num" style="font-size: 11px; font-weight: 600; background: #FFF6EE; color: #5C4632; border: 1px solid #F1D9C4; border-radius: 9px; padding: 0 6px; line-height: 16px">{{reviewCount}}</span></sc-if>
+        </button>
+      </nav>
+      <button type="button" class="press" onClick="{{addReceipt}}" style="font: inherit; font-weight: 600; font-size: 14px; color: #FFFFFF; background: #121417; border: 0; border-radius: 6px; padding: 0 16px; min-height: 44px; cursor: pointer; display: flex; align-items: center; gap: 8px">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add receipt
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ INSIGHTS ============ -->
+  <sc-if value="{{isInsights}}" hint-placeholder-val="{{ true }}">
+  <main style="max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 20px">
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 4px">
+        <button type="button" class="press" onClick="{{prevMonth}}" disabled="{{atFirst}}" aria-label="Previous month" style="font: inherit; width: 40px; height: 40px; border: 1px solid #E2E5EA; background: #FFFFFF; border-radius: 6px; cursor: pointer; color: #121417; opacity: {{prevOpacity}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <h1 style="margin: 0 10px; font-size: 20px; font-weight: 600; min-width: 150px; text-align: center">{{m.label}} 2026</h1>
+        <button type="button" class="press" onClick="{{nextMonth}}" disabled="{{atLast}}" aria-label="Next month" style="font: inherit; width: 40px; height: 40px; border: 1px solid #E2E5EA; background: #FFFFFF; border-radius: 6px; cursor: pointer; color: #121417; opacity: {{nextOpacity}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <p class="num" style="margin: 0; font-size: 12px; color: #565C66">{{receiptCountLine}}</p>
+    </div>
+
+    <!-- Hero: the receipt -->
+    <section aria-label="Month summary" style="background: #FFFFFF; border: 1px solid #E2E5EA; border-bottom: 0; border-radius: 4px 4px 0 0; position: relative; margin-bottom: 10px">
+      <div aria-hidden="true" style="position: absolute; left: -1px; right: -1px; bottom: -9px; height: 10px; background: radial-gradient(circle at 7px 10px, #F6F7F9 5.5px, #FFFFFF 6px) repeat-x; background-size: 14px 10px; border-left: 1px solid #E2E5EA; border-right: 1px solid #E2E5EA"></div>
+      <div style="padding: 28px 32px 30px; display: flex; flex-wrap: wrap; gap: 32px; align-items: stretch">
+        <div style="flex: 1 1 360px; display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #565C66">{{heroLabel}}</span>
+          <span class="num" style="font-size: 64px; font-weight: 500; line-height: 1; letter-spacing: -0.03em">{{totalStr}}</span>
+          <span class="num" style="font-size: 14px; font-weight: 500; color: {{heroDeltaColor}}">{{heroDelta}}</span>
+          <sc-if value="{{m.partialFlag}}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px; max-width: 420px">
+              <div style="display: grid; grid-template-columns: 130px minmax(0,1fr) 44px; align-items: center; gap: 10px; font-size: 12px; color: #565C66">
+                <span>Month gone by</span>
+                <div style="height: 6px; background: #EEF0F3; border-radius: 2px; overflow: hidden"><div class="bar" style="height: 100%; background: #C9CED6; transform: scaleX({{paceElapsed}})"></div></div>
+                <span class="num" style="text-align: right">{{paceElapsedPct}}</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 130px minmax(0,1fr) 44px; align-items: center; gap: 10px; font-size: 12px; color: #565C66">
+                <span>Of {{prevLabel}}'s spend</span>
+                <div style="height: 6px; background: #EEF0F3; border-radius: 2px; overflow: hidden"><div class="bar" style="height: 100%; background: #121417; transform: scaleX({{paceSpent}})"></div></div>
+                <span class="num" style="text-align: right">{{paceSpentPct}}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="flex: 1 1 300px; border-left: 2px dashed #E2E5EA; padding-left: 24px; display: flex; flex-direction: column; justify-content: center; gap: 14px">
+          <sc-for list="{{insights}}" as="ins" hint-placeholder-count="2">
+            <p style="margin: 0; font-size: 17px; line-height: 1.45; display: flex; gap: 10px; align-items: baseline"><span aria-hidden="true" style="flex: 0 0 auto; width: 9px; height: 9px; border-radius: 2px; background: {{ins.color}}; transform: translateY(-1px)"></span><span>{{ins.text}}</span></p>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- Needs a look -->
+    <sc-if value="{{hasReview}}" hint-placeholder-val="{{ true }}">
+      <section aria-labelledby="rev-h" style="background: #FFF6EE; border: 1px solid #F1D9C4; border-radius: 4px; padding: 14px 16px 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+        <div style="flex: 1 1 240px">
+          <h2 id="rev-h" style="margin: 0; font-size: 15px; font-weight: 600">{{reviewHeadline}}</h2>
+          <p style="margin: 2px 0 0; font-size: 13px; color: #5C4632">The scanner wasn't sure about a few numbers. It takes about 20 seconds each.</p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <sc-for list="{{reviewChips}}" as="rc" hint-placeholder-count="3">
+            <button type="button" class="press" onClick="{{rc.open}}" style="font: inherit; font-size: 13px; background: #FFFFFF; border: 1px solid #F1D9C4; border-radius: 6px; padding: 0 12px; min-height: 40px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #121417"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 2px; background: {{rc.color}}"></span>{{rc.merchant}}</button>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start">
+
+      <!-- Categories -->
+      <section aria-labelledby="cat-h" style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px; padding: 22px 24px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; gap: 12px">
+          <h2 id="cat-h" style="margin: 0; font-size: 15px; font-weight: 600">By category</h2>
+          <span style="font-size: 12px; color: #565C66">{{deltaHeader}}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <sc-for list="{{cats}}" as="c" hint-placeholder-count="7">
+            <button type="button" class="row" onClick="{{c.toggle}}" aria-pressed="{{c.pressed}}" style="font: inherit; color: inherit; text-align: left; border: 0; cursor: pointer; display: grid; grid-template-columns: 128px minmax(0, 1fr) 84px 58px; align-items: center; gap: 12px; padding: 0 8px; min-height: 40px; border-radius: 4px; background: {{c.bg}}; opacity: {{c.dim}}">
+              <span style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: {{c.weight}}"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: {{c.color}}"></span>{{c.name}}</span>
+              <span style="height: 10px; background: #EEF0F3; border-radius: 2px; overflow: hidden; display: block"><span class="bar" style="display: block; height: 100%; background: {{c.color}}; transform: scaleX({{c.scale}})"></span></span>
+              <span class="num" style="font-size: 14px; text-align: right">{{c.amountStr}}</span>
+              <span class="num" style="font-size: 12px; text-align: right; color: {{c.deltaColor}}">{{c.delta}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <p style="margin: 12px 8px 0; font-size: 12px; color: #565C66">{{catHint}}</p>
+      </section>
+
+      <!-- Trend -->
+      <section aria-labelledby="trend-h" style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px; padding: 22px 24px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 18px">
+          <h2 id="trend-h" style="margin: 0; font-size: 15px; font-weight: 600">Six months</h2>
+          <span style="font-size: 12px; color: #565C66">Click a month to open it</span>
+        </div>
+        <div role="img" aria-label="{{trendAria}}" style="display: flex; align-items: flex-end; gap: 14px; height: 200px; border-bottom: 1px solid #E2E5EA">
+          <sc-for list="{{trend}}" as="t" hint-placeholder-count="6">
+            <button type="button" class="mbar" onClick="{{t.pick}}" aria-label="{{t.aria}}" style="font: inherit; flex: 1 1 0; background: none; border: 0; padding: 0; cursor: pointer; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px">
+              <span class="num" style="font-size: 11px; color: {{t.labelColor}}; font-weight: {{t.labelWeight}}">{{t.totalStr}}</span>
+              <span style="width: 100%; max-width: 46px; display: flex; flex-direction: column; outline: {{t.outline}}; outline-offset: 3px; border-radius: 2px">
+                <span style="height: {{t.ghost}}; border: 1px dashed #C9CED6; border-bottom: 0; border-radius: 2px 2px 0 0; box-sizing: border-box; display: block"></span>
+                <sc-for list="{{t.segs}}" as="sg" hint-placeholder-count="4">
+                  <span class="seg" style="display: block; height: {{sg.h}}; background: {{sg.color}}; opacity: {{sg.op}}"></span>
+                </sc-for>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 14px; margin-top: 8px">
+          <sc-for list="{{trend}}" as="t" hint-placeholder-count="6">
+            <span style="flex: 1 1 0; text-align: center; font-size: 12px; color: {{t.labelColor}}; font-weight: {{t.labelWeight}}">{{t.key}}</span>
+          </sc-for>
+        </div>
+        <p style="margin: 14px 0 0; font-size: 12px; color: #565C66">{{trendNote}}</p>
+      </section>
+
+      <!-- Merchants -->
+      <section aria-labelledby="merch-h" style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px; padding: 22px 24px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px">
+          <h2 id="merch-h" style="margin: 0; font-size: 15px; font-weight: 600">{{merchTitle}}</h2>
+          <sc-if value="{{hasCat}}" hint-placeholder-val="{{ false }}">
+            <button type="button" class="press" onClick="{{clearCat}}" style="font: inherit; font-size: 12px; font-weight: 600; background: #EEF0F3; border: 0; border-radius: 6px; padding: 0 10px; min-height: 32px; cursor: pointer; color: #121417">Show all</button>
+          </sc-if>
+        </div>
+        <div role="table" aria-label="Top merchants" style="display: flex; flex-direction: column">
+          <div role="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 56px 84px 92px; gap: 8px; color: #565C66; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 8px">
+            <span role="columnheader">Merchant</span><span role="columnheader" style="text-align: right">Visits</span><span role="columnheader" style="text-align: right">Per visit</span><span role="columnheader" style="text-align: right">Total</span>
+          </div>
+          <sc-for list="{{merchants}}" as="r" hint-placeholder-count="5">
+            <div role="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 56px 84px 92px; gap: 8px; align-items: center; min-height: 42px; border-top: 1px solid #EEF0F3">
+              <span role="cell" style="display: flex; align-items: center; gap: 8px; min-width: 0"><span aria-hidden="true" style="flex: 0 0 auto; width: 8px; height: 8px; border-radius: 2px; background: {{r.color}}"></span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span></span>
+              <span role="cell" class="num" style="text-align: right">{{r.visits}}</span>
+              <span role="cell" class="num" style="text-align: right; color: #565C66">{{r.avgStr}}</span>
+              <span role="cell" class="num" style="text-align: right; font-weight: 500">{{r.totalStr}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <!-- Weekdays + savings -->
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <section aria-labelledby="week-h" style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px; padding: 22px 24px">
+          <h2 id="week-h" style="margin: 0 0 2px; font-size: 15px; font-weight: 600">When you spend</h2>
+          <p style="margin: 0 0 16px; font-size: 13px; color: #565C66">{{weekNote}}</p>
+          <div role="img" aria-label="{{weekAria}}" style="display: flex; align-items: flex-end; gap: 10px; height: 96px">
+            <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+              <span style="flex: 1 1 0; height: {{d.h}}; background: {{d.color}}; border-radius: 2px 2px 0 0; display: block"></span>
+            </sc-for>
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 8px">
+            <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+              <span style="flex: 1 1 0; text-align: center; font-size: 12px; color: #565C66">{{d.label}}</span>
+            </sc-for>
+          </div>
+        </section>
+        <section aria-label="Savings and tax" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+          <div style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px; padding: 18px 22px">
+            <span style="font-size: 13px; color: #565C66">Saved with discounts</span>
+            <div class="num" style="font-size: 28px; font-weight: 500; margin-top: 4px">{{savedStr}}</div>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px; padding: 18px 22px">
+            <span style="font-size: 13px; color: #565C66">Paid in sales tax</span>
+            <div class="num" style="font-size: 28px; font-weight: 500; margin-top: 4px">{{taxStr}}</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ============ RECEIPTS ============ -->
+  <sc-if value="{{isReceipts}}" hint-placeholder-val="{{ false }}">
+  <main style="max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 600">November receipts</h1>
+      <div role="tablist" aria-label="Filter receipts" style="display: flex; gap: 4px; background: #EEF0F3; border-radius: 6px; padding: 3px">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="3">
+          <button type="button" role="tab" aria-selected="{{tb.selected}}" onClick="{{tb.pick}}" style="font: inherit; font-size: 13px; font-weight: 600; border: 0; cursor: pointer; border-radius: 4px; padding: 0 12px; min-height: 34px; display: flex; align-items: center; gap: 6px; background: {{tb.bg}}; color: {{tb.color}}; box-shadow: {{tb.shadow}}">{{tb.label}} <span class="num" style="font-size: 11px; color: #565C66">{{tb.count}}</span></button>
+        </sc-for>
+      </div>
+    </div>
+
+    <section aria-label="Receipts" style="background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 4px">
+      <sc-if value="{{processing}}" hint-placeholder-val="{{ false }}">
+        <div class="printin" style="display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid #E2E5EA; background: #F6F7F9">
+          <div aria-hidden="true" style="width: 34px; height: 42px; overflow: hidden; position: relative; border-top: 3px solid #121417; border-radius: 2px">
+            <div class="feed" style="position: absolute; inset: 0; background: #FFFFFF; border: 1px solid #C9CED6; border-top: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px 4px">
+              <span style="height: 2px; background: #C9CED6"></span><span style="height: 2px; width: 70%; background: #C9CED6"></span><span style="height: 2px; background: #C9CED6"></span><span style="height: 2px; width: 50%; background: #121417"></span>
+            </div>
+          </div>
+          <div style="flex: 1 1 auto; min-width: 0">
+            <div style="font-weight: 600">Reading receipt…</div>
+            <div class="num" style="font-size: 12px; color: #565C66">mock_receipt.png · 84 KB</div>
+            <div style="height: 2px; background: #E2E5EA; margin-top: 8px; overflow: hidden; border-radius: 1px; max-width: 280px"><div class="scan" style="width: 40%; height: 100%; background: #121417"></div></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{listEmpty}}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 48px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4C9A62" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          <div style="font-weight: 600; font-size: 15px">Nothing left to review</div>
+          <div style="font-size: 13px; color: #565C66">Every receipt this month adds up.</div>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+        <div>
+          <div class="num" style="padding: 10px 20px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #565C66; border-top: 1px solid #EEF0F3">{{g.label}}</div>
+          <sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+            <button type="button" class="row {{it.anim}}" onClick="{{it.open}}" style="font: inherit; color: inherit; text-align: left; width: 100%; border: 0; background: transparent; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) 140px 120px 96px; align-items: center; gap: 12px; padding: 0 20px; min-height: 52px">
+              <span style="display: flex; align-items: center; gap: 12px; min-width: 0"><span aria-hidden="true" style="flex: 0 0 auto; width: 10px; height: 10px; border-radius: 2px; background: {{it.color}}"></span><span style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.merchant}}</span></span>
+              <span style="font-size: 13px; color: #565C66">{{it.cat}}</span>
+              <span><sc-if value="{{it.review}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; font-weight: 600; background: #FFF6EE; color: #5C4632; border: 1px solid #F1D9C4; border-radius: 4px; padding: 3px 8px">Needs a look</span></sc-if></span>
+              <span class="num" style="text-align: right; font-weight: 500">{{it.totalStr}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </section>
+    <p style="margin: 0; font-size: 12px; color: #565C66">Tip: drop receipt photos anywhere on this page.</p>
+  </main>
+  </sc-if>
+
+  <!-- ============ EDITOR ============ -->
+  <sc-if value="{{editing}}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; background: rgba(18,20,23,0.45); z-index: 20; display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; overflow-y: auto">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ed-h" style="background: #FFFFFF; border-radius: 6px; width: 100%; max-width: 1000px; box-shadow: 0 24px 64px rgba(18,20,23,0.22); display: flex; flex-wrap: wrap; overflow: hidden">
+
+        <!-- The receipt as scanned -->
+        <div style="flex: 0 0 380px; max-width: 100%; background: #EEF0F3; padding: 28px; box-sizing: border-box; display: flex; justify-content: center">
+          <div class="num" style="background: #FFFFFF; width: 100%; max-width: 300px; padding: 22px 20px 26px; font-size: 12px; line-height: 1.7; color: #2A2D33; box-shadow: 0 1px 2px rgba(18,20,23,0.08); position: relative">
+            <div style="text-align: center; font-weight: 600; font-size: 13px">{{edUpper}}</div>
+            <div style="text-align: center; color: #565C66; font-size: 11px">{{ed.dateLong}}</div>
+            <div style="border-top: 1px dashed #C9CED6; margin: 10px 0"></div>
+            <sc-for list="{{edScan}}" as="sl" hint-placeholder-count="4">
+              <div style="display: flex; justify-content: space-between; gap: 8px; background: {{sl.mark}}; margin: 0 -6px; padding: 0 6px"><span>{{sl.name}}</span><span>{{sl.price}}</span></div>
+            </sc-for>
+            <div style="border-top: 1px dashed #C9CED6; margin: 10px 0"></div>
+            <div style="display: flex; justify-content: space-between"><span>SUBTOTAL</span><span>{{edScanSub}}</span></div>
+            <div style="display: flex; justify-content: space-between"><span>TAX</span><span>{{ed.taxStr}}</span></div>
+            <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 13px; background: {{edScanTotalMark}}; margin: 0 -6px; padding: 0 6px"><span>TOTAL</span><span>{{edScanTotal}}</span></div>
+            <div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: -8px; height: 8px; background: radial-gradient(circle at 6px 8px, #EEF0F3 5px, #FFFFFF 5.5px) repeat-x; background-size: 12px 8px"></div>
+          </div>
+        </div>
+
+        <!-- Fields -->
+        <div style="flex: 1 1 420px; min-width: 0; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+            <div>
+              <h2 id="ed-h" style="margin: 0; font-size: 18px; font-weight: 600">{{ed.merchant}}</h2>
+              <div class="num" style="font-size: 12px; color: #565C66; margin-top: 2px">{{ed.dateLong}}</div>
+            </div>
+            <button type="button" class="press" onClick="{{closeEditor}}" aria-label="Close" style="font: inherit; width: 40px; height: 40px; border: 0; background: #EEF0F3; border-radius: 6px; cursor: pointer; color: #121417; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+          </div>
+
+          <sc-if value="{{edHasReason}}" hint-placeholder-val="{{ true }}">
+            <div role="status" style="background: #FFF6EE; border: 1px solid #F1D9C4; border-radius: 4px; padding: 10px 12px; font-size: 13px; color: #5C4632; display: flex; gap: 8px; align-items: flex-start">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex: 0 0 auto; margin-top: 1px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+              <span>{{edReasonText}}</span>
+            </div>
+          </sc-if>
+
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #565C66">Merchant
+              <input type="text" value="{{ed.merchant}}" readOnly="{{ true }}" style="font: inherit; font-size: 14px; font-weight: 400; color: #121417; border: 1px solid #E2E5EA; border-radius: 6px; padding: 0 12px; min-height: 40px; background: #FFFFFF"/>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #565C66">Category
+              <select value="{{edCat}}" onChange="{{onCat}}" style="font: inherit; font-size: 14px; font-weight: 400; color: #121417; border: 1px solid #E2E5EA; border-radius: 6px; padding: 0 10px; min-height: 40px; background: #FFFFFF">
+                <option value="Dining">Dining</option><option value="Groceries">Groceries</option><option value="Shopping">Shopping</option><option value="Transportation">Transportation</option><option value="Entertainment">Entertainment</option><option value="Health">Health</option><option value="Travel">Travel</option><option value="Other">Other</option>
+              </select>
+            </label>
+          </div>
+
+          <div>
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #565C66; padding-bottom: 6px; border-bottom: 1px solid #E2E5EA">
+              <span>Item</span><span style="text-align: right">Price</span>
+            </div>
+            <sc-for list="{{edItems}}" as="ei" hint-placeholder-count="4">
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #EEF0F3">
+                <span style="font-size: 14px">{{ei.name}}</span>
+                <input class="num" type="text" inputmode="decimal" aria-label="{{ei.aria}}" value="{{ei.value}}" onChange="{{ei.onChange}}" readOnly="{{ei.readOnly}}" style="font-size: 14px; text-align: right; color: #121417; border: {{ei.border}}; border-radius: 6px; padding: 0 10px; min-height: 36px; background: {{ei.bg}}; box-sizing: border-box; width: 100%"/>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-left: auto; width: 100%; max-width: 300px">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #565C66"><span>Items</span><span class="num">{{edSumStr}}</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; color: #565C66"><span>Tax</span><span class="num">{{ed.taxStr}}</span></div>
+            <label style="display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; font-weight: 600">Total
+              <input class="num" type="text" inputmode="decimal" value="{{edTotal}}" onChange="{{onTotal}}" placeholder="0.00" style="font-size: 16px; font-weight: 500; text-align: right; color: #121417; border: {{edTotalBorder}}; border-radius: 6px; padding: 0 10px; min-height: 40px; width: 130px; background: {{edTotalBg}}"/>
+            </label>
+            <div class="num" role="status" style="font-size: 12px; text-align: right; color: {{edCheckColor}}">{{edCheck}}</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 6px; border-top: 1px solid #E2E5EA; flex-wrap: wrap">
+            <button type="button" class="press" onClick="{{deleteReceipt}}" style="font: inherit; font-size: 14px; font-weight: 600; color: #B4471F; background: none; border: 0; cursor: pointer; min-height: 44px; padding: 0 4px">Delete</button>
+            <div style="display: flex; gap: 8px">
+              <button type="button" class="press" onClick="{{closeEditor}}" style="font: inherit; font-size: 14px; font-weight: 600; color: #121417; background: #FFFFFF; border: 1px solid #E2E5EA; border-radius: 6px; padding: 0 16px; min-height: 44px; cursor: pointer">Cancel</button>
+              <button type="button" class="press" onClick="{{save}}" disabled="{{saveDisabled}}" style="font: inherit; font-size: 14px; font-weight: 600; color: #FFFFFF; background: #121417; border: 0; border-radius: 6px; padding: 0 20px; min-height: 44px; cursor: pointer; opacity: {{saveOpacity}}">Save receipt</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Toast -->
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" aria-live="polite" style="position: fixed; left: 0; right: 0; bottom: 24px; display: flex; justify-content: center; z-index: 30; pointer-events: none">
+      <div class="toast" style="pointer-events: auto; background: #121417; color: #FFFFFF; border-radius: 6px; padding: 10px 10px 10px 16px; font-size: 14px; display: flex; align-items: center; gap: 14px; box-shadow: 0 8px 24px rgba(18,20,23,0.2)">
+        <span>{{toast}}</span>
+        <sc-if value="{{canUndo}}" hint-placeholder-val="{{ false }}">
+          <button type="button" class="press" onClick="{{undo}}" style="font: inherit; font-size: 13px; font-weight: 600; color: #FFFFFF; background: rgba(255,255,255,0.12); border: 0; border-radius: 4px; padding: 0 10px; min-height: 32px; cursor: pointer">Undo</button>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+var CATS = [
+  { name: 'Dining', color: '#E0702E', ticket: 12 }, { name: 'Groceries', color: '#4C9A62', ticket: 38 },
+  { name: 'Shopping', color: '#7B5BC4', ticket: 41 }, { name: 'Transportation', color: '#3473D6', ticket: 24 },
+  { name: 'Entertainment', color: '#D4A72C', ticket: 21 }, { name: 'Health', color: '#D24D67', ticket: 16 },
+  { name: 'Travel', color: '#2A9BA3', ticket: 107 }, { name: 'Other', color: '#A3A9B2', ticket: 18 }
+];
+var MONTHS = [
+  { key: 'Jun', label: 'June', days: 30, data: [248, 312, 96, 168, 54, 38, 0, 72] },
+  { key: 'Jul', label: 'July', days: 31, data: [302, 296, 188, 154, 96, 22, 214, 64] },
+  { key: 'Aug', label: 'August', days: 31, data: [276, 334, 242, 162, 40, 61, 0, 88] },
+  { key: 'Sep', label: 'September', days: 30, data: [264, 318, 118, 149, 72, 30, 0, 59] },
+  { key: 'Oct', label: 'October', days: 31, data: [281, 322, 176, 186, 110, 104, 0, 41] },
+  { key: 'Nov', label: 'November', days: 30, partial: 7, data: [101, 74, 58, 41, 14, 0, 0, 12] }
+];
+var MERCHANTS = [
+  ['Kroger', 'Groceries', 0.58, 36], ['Publix', 'Groceries', 0.3, 29], ['Trader Joe’s', 'Groceries', 0.12, 41],
+  ['Chipotle', 'Dining', 0.38, 13], ['Starbucks', 'Dining', 0.24, 6], ['Chick-fil-A', 'Dining', 0.22, 10], ['Taqueria del Sol', 'Dining', 0.16, 16],
+  ['Target', 'Shopping', 0.56, 44], ['Amazon', 'Shopping', 0.44, 31],
+  ['Shell', 'Transportation', 0.66, 37], ['Uber', 'Transportation', 0.34, 16],
+  ['CVS Pharmacy', 'Health', 1, 17], ['AMC Theatres', 'Entertainment', 0.6, 23], ['Georgia Theatre', 'Entertainment', 0.4, 32],
+  ['Delta Air Lines', 'Travel', 1, 214], ['UGA Bookstore', 'Other', 0.7, 21], ['USPS', 'Other', 0.3, 9]
+];
+var WEEK = [['Mon', 0.10], ['Tue', 0.12], ['Wed', 0.11], ['Thu', 0.13], ['Fri', 0.21], ['Sat', 0.20], ['Sun', 0.13]];
+
+function money(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function money0(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function colorOf(cat) { for (var i = 0; i < CATS.length; i++) if (CATS[i].name === cat) return CATS[i].color; return '#A3A9B2'; }
+function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+function parse(v) { var n = parseFloat(String(v).replace(/[$,\s]/g, '')); return isNaN(n) ? null : n; }
+
+function initialReceipts() {
+  var R = function (id, merchant, cat, day, items, tax, total, status, reason, flag) {
+    return { id: id, merchant: merchant, cat: cat, day: day, items: items, tax: tax, total: total, status: status, reason: reason || null, flag: flag || null };
+  };
+  return [
+    R(1, 'Starbucks', 'Dining', 7, [['Iced Latte', 5.75], ['Croissant', 3.65]], 0.75, 10.15, 'done'),
+    R(2, 'Kroger', 'Groceries', 7, [['Bananas 2.1 lb', 1.32], ['Whole Milk 1 gal', 3.79], ['Chicken Thighs', 7.58], ['Baby Spinach', 3.49]], 1.29, 17.47, 'review', 'Items don’t add up to the subtotal', { type: 'item', index: 2, scanned: 1.58 }),
+    R(3, 'Chipotle', 'Dining', 6, [['Burrito Bowl', 11.45], ['Chips & Guac', 4.95]], 1.31, 17.71, 'done'),
+    R(4, 'Shell', 'Transportation', 6, [['Unleaded 9.8 gal', 31.26]], 0, null, 'review', 'Couldn’t find the total', { type: 'total' }),
+    R(5, 'Target', 'Shopping', 5, [['USB-C Cable 6ft', 14.99], ['Notebook 3pk', 7.49], ['Shampoo', 8.99]], 2.52, 33.99, 'review', 'Couldn’t read the price of 1 item', { type: 'item', index: 1, scanned: null }),
+    R(6, 'Chick-fil-A', 'Dining', 5, [['Chicken Sandwich Meal', 10.89]], 0.87, 11.76, 'done'),
+    R(7, 'AMC Theatres', 'Entertainment', 4, [['Movie Ticket', 13.75]], 0, 13.75, 'done'),
+    R(8, 'Publix', 'Groceries', 3, [['Sub Sandwich', 8.79], ['Sparkling Water 8pk', 5.49], ['Apples 3 lb', 4.99]], 1.54, 20.81, 'done'),
+    R(9, 'Uber', 'Transportation', 2, [['Trip', 9.84]], 0, 9.84, 'done'),
+    R(10, 'Chipotle', 'Dining', 1, [['Burrito Bowl', 11.45], ['Fountain Drink', 2.95]], 1.15, 15.55, 'done'),
+    R(11, 'UGA Bookstore', 'Other', 1, [['Scantron 10pk', 4.25], ['Lab Manual', 7.50]], 0.94, 12.69, 'done')
+  ];
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'insights', month: 5, cat: null, tab: 'all', receipts: initialReceipts(), editId: null,
+      editItems: [], editTotal: '', editCat: '', processing: false, toast: '', undoData: null, freshId: null };
+    this.timers = [];
+  }
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+  later(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  showToast(text, undoData) {
+    var self = this;
+    this.setState({ toast: text, undoData: undoData || null, toastAt: Date.now() });
+    var stamp = Date.now();
+    this.later(function () { if (self.state.toastAt <= stamp) self.setState({ toast: '', undoData: null }); }, 3600);
+  }
+  openEditor(id) {
+    var r = this.state.receipts.filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    var items = r.items.map(function (it, i) {
+      if (r.flag && r.flag.type === 'item' && r.flag.index === i) return r.flag.scanned == null ? '' : r.flag.scanned.toFixed(2);
+      return it[1].toFixed(2);
+    });
+    this.setState({ editId: id, editItems: items, editTotal: r.total == null ? '' : r.total.toFixed(2), editCat: r.cat });
+  }
+
+  renderVals() {
+    var self = this, s = this.state;
+    var idx = s.month, m = MONTHS[idx], prev = idx > 0 ? MONTHS[idx - 1] : null;
+    var factor = m.partial ? m.days / m.partial : 1;
+    var total = sum(m.data), prevTotal = prev ? sum(prev.data) : null, proj = total * factor;
+
+    // Hero
+    var heroDelta = '', heroDeltaColor = '#565C66';
+    if (prev) {
+      var diff = proj - prevTotal;
+      var word = diff < 0 ? 'less' : 'more';
+      heroDelta = m.partial
+        ? 'Day ' + m.partial + ' of ' + m.days + ' · on pace for ' + money0(proj) + ', about ' + money0(Math.abs(diff)) + ' ' + word + ' than ' + prev.label
+        : (diff < 0 ? '↓ ' : '↑ ') + money(Math.abs(diff)) + ' ' + word + ' than ' + prev.label;
+      heroDeltaColor = diff < 0 ? '#1F5FBF' : '#B4471F';
+    } else { heroDelta = 'Your first month on Tally'; }
+
+    // Categories
+    var cats = CATS.map(function (c, i) {
+      var amt = m.data[i], pa = prev ? prev.data[i] : null, pct = null, delta = '—', dc = '#565C66';
+      if (pa != null && amt > 0) {
+        if (pa === 0) { delta = 'new'; }
+        else {
+          pct = Math.round((amt * factor - pa) / pa * 100);
+          if (Math.abs(pct) >= 3) { delta = (pct > 0 ? '↑ ' : '↓ ') + Math.abs(pct) + '%'; dc = pct > 0 ? '#B4471F' : '#1F5FBF'; }
+        }
+      }
+      return { name: c.name, color: c.color, amount: amt, pct: pct, delta: delta, deltaColor: dc };
+    }).filter(function (c) { return c.amount > 0; }).sort(function (a, b) { return b.amount - a.amount; });
+    var max = cats.length ? cats[0].amount : 1;
+    var catRows = cats.map(function (c) {
+      var on = s.cat === c.name;
+      return Object.assign({}, c, {
+        amountStr: money0(c.amount), scale: (c.amount / max).toFixed(3),
+        bg: on ? '#EEF0F3' : 'transparent', weight: on ? 600 : 400, dim: s.cat && !on ? 0.55 : 1, pressed: on ? 'true' : 'false',
+        toggle: function () { self.setState({ cat: on ? null : c.name }); }
+      });
+    });
+
+    // Insights sentences
+    var movers = cats.filter(function (c) { return c.pct != null && c.amount >= 30; });
+    var up = movers.slice().sort(function (a, b) { return b.pct - a.pct; })[0];
+    var down = movers.slice().sort(function (a, b) { return a.pct - b.pct; })[0];
+    var insights = [];
+    if (prev && up && up.pct > 5) insights.push({ color: up.color, text: m.partial
+      ? up.name + ' is running ' + up.pct + '% ahead of ' + prev.label + '’s pace.'
+      : up.name + ' was up ' + up.pct + '% from ' + prev.label + ' (' + money0(up.amount) + ').' });
+    if (prev && down && down.pct < -5) insights.push({ color: down.color, text: m.partial
+      ? down.name + ' is tracking ' + Math.abs(down.pct) + '% below ' + prev.label + '.'
+      : 'Biggest drop: ' + down.name + ', down ' + Math.abs(down.pct) + '%.' });
+    if (!insights.length) insights.push({ color: '#A3A9B2', text: cats.length ? cats[0].name + ' was your biggest category at ' + money0(cats[0].amount) + '.' : 'No spending recorded.' });
+
+    // Trend
+    var maxTotal = Math.max.apply(null, MONTHS.map(function (x) { return sum(x.data) * (x.partial ? x.days / x.partial : 1); }));
+    var H = 150;
+    var trend = MONTHS.map(function (x, i) {
+      var t = sum(x.data), f = x.partial ? x.days / x.partial : 1, sel = i === idx;
+      var segs = CATS.map(function (c, j) {
+        return { h: (x.data[j] / maxTotal * H).toFixed(1) + 'px', color: c.color, op: s.cat ? (c.name === s.cat ? 1 : 0.15) : 1, v: x.data[j] };
+      }).filter(function (g) { return g.v > 0; });
+      var shown = s.cat ? x.data[CATS.map(function (c) { return c.name; }).indexOf(s.cat)] : t;
+      return {
+        key: x.key, totalStr: money0(shown), segs: segs,
+        ghost: x.partial ? ((t * f - t) / maxTotal * H).toFixed(1) + 'px' : '0px',
+        labelColor: sel ? '#121417' : '#565C66', labelWeight: sel ? 600 : 400,
+        outline: sel ? '2px solid #121417' : '2px solid transparent',
+        aria: x.label + ': ' + money0(t) + (x.partial ? ' so far' : ''),
+        pick: function () { self.setState({ month: i }); }
+      };
+    });
+
+    // Merchants
+    var merchants = MERCHANTS.map(function (row) {
+      var ci = CATS.map(function (c) { return c.name; }).indexOf(row[1]);
+      var t = m.data[ci] * row[2];
+      return { name: row[0], cat: row[1], color: CATS[ci].color, total: t, visits: Math.max(1, Math.round(t / row[3])) };
+    }).filter(function (r) { return r.total >= 5 && (!s.cat || r.cat === s.cat); })
+      .sort(function (a, b) { return b.total - a.total; }).slice(0, 5)
+      .map(function (r) { return Object.assign(r, { totalStr: money(r.total), avgStr: money(r.total / r.visits) }); });
+
+    // Weekdays
+    var wmax = Math.max.apply(null, WEEK.map(function (w) { return w[1]; }));
+    var days = WEEK.map(function (w) { return { label: w[0], h: Math.round(w[1] / wmax * 88) + 'px', color: w[1] >= 0.2 ? '#121417' : '#C9CED6' }; });
+
+    // Receipts
+    var receipts = s.receipts, review = receipts.filter(function (r) { return r.status === 'review'; });
+    var visible = receipts.filter(function (r) { return s.tab === 'all' || (s.tab === 'review' ? r.status === 'review' : r.status === 'done'); });
+    var byDay = {};
+    visible.forEach(function (r) { (byDay[r.day] = byDay[r.day] || []).push(r); });
+    var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var groups = Object.keys(byDay).map(Number).sort(function (a, b) { return b - a; }).map(function (d) {
+      var dn = dayNames[new Date(2026, 10, d).getDay()];
+      return {
+        label: (d === 7 ? 'Today · ' : d === 6 ? 'Yesterday · ' : '') + dn + ', Nov ' + d,
+        items: byDay[d].map(function (r) {
+          return { merchant: r.merchant, cat: r.cat, color: colorOf(r.cat), review: r.status === 'review',
+            totalStr: r.total == null ? '—' : money(r.total), anim: r.id === s.freshId ? 'printin' : '',
+            open: function () { self.openEditor(r.id); } };
+        })
+      };
+    });
+    var tabs = [['all', 'All', receipts.length], ['review', 'Needs a look', review.length], ['done', 'Done', receipts.length - review.length]].map(function (t) {
+      var on = s.tab === t[0];
+      return { label: t[1], count: t[2], selected: on ? 'true' : 'false', bg: on ? '#FFFFFF' : 'transparent', color: on ? '#121417' : '#565C66',
+        shadow: on ? '0 1px 2px rgba(18,20,23,0.08)' : 'none', pick: function () { self.setState({ tab: t[0] }); } };
+    });
+
+    // Editor
+    var ed = null, edVals = {};
+    if (s.editId != null) {
+      var r = receipts.filter(function (x) { return x.id === s.editId; })[0];
+      if (r) {
+        var vals = s.editItems.map(parse);
+        var itemSum = sum(vals.map(function (v) { return v || 0; }));
+        var tot = parse(s.editTotal);
+        var expected = Math.round((itemSum + r.tax) * 100) / 100;
+        var ok = tot != null && vals.every(function (v) { return v != null; }) && Math.abs(tot - expected) < 0.01;
+        var flagIdx = r.flag && r.flag.type === 'item' ? r.flag.index : -1;
+        var scanLines = r.items.map(function (it, i) {
+          var p = i === flagIdx ? (r.flag.scanned == null ? '▒▒.▒▒' : r.flag.scanned.toFixed(2)) : it[1].toFixed(2);
+          return { name: it[0].toUpperCase(), price: p, mark: i === flagIdx ? 'rgba(224,112,46,0.16)' : 'transparent' };
+        });
+        var scanSub = r.flag && r.flag.type === 'item' && r.flag.scanned == null ? '▒▒.▒▒' : sum(r.items.map(function (it) { return it[1]; })).toFixed(2);
+        ed = { merchant: r.merchant, reason: r.reason, taxStr: money(r.tax),
+          dateLong: dayNames[new Date(2026, 10, r.day).getDay()] + ', November ' + r.day + ', 2026' };
+        edVals = {
+          edUpper: r.merchant.toUpperCase(), edScan: scanLines, edScanSub: scanSub,
+          edScanTotal: r.flag && r.flag.type === 'total' ? '' : (r.total == null ? '' : r.total.toFixed(2)),
+          edScanTotalMark: r.flag && r.flag.type === 'total' ? 'rgba(224,112,46,0.16)' : 'transparent',
+          edHasReason: !!r.reason, edCat: s.editCat,
+          edReasonText: r.flag ? r.reason + '. The highlighted field needs you.' : r.reason + '.',
+          edItems: r.items.map(function (it, i) {
+            var flagged = i === flagIdx;
+            return { name: it[0], value: s.editItems[i], readOnly: !flagged, aria: 'Price of ' + it[0],
+              border: flagged ? '2px solid #E0702E' : '1px solid transparent', bg: flagged ? '#FFF6EE' : '#F6F7F9',
+              onChange: function (e) { var next = s.editItems.slice(); next[i] = e.target.value; self.setState({ editItems: next }); } };
+          }),
+          edSumStr: money(itemSum), edTotal: s.editTotal,
+          edTotalBorder: r.flag && r.flag.type === 'total' ? '2px solid #E0702E' : '1px solid #E2E5EA',
+          edTotalBg: r.flag && r.flag.type === 'total' ? '#FFF6EE' : '#FFFFFF',
+          edCheck: ok ? '✓ Items + tax match the total' : (tot == null || vals.some(function (v) { return v == null; }) ? 'Fill in the highlighted field' : 'Off by ' + money(Math.abs(tot - expected)) + ' (items + tax = ' + money(expected) + ')'),
+          edCheckColor: ok ? '#2F7A47' : (tot == null ? '#565C66' : '#B4471F'),
+          saveDisabled: !ok, saveOpacity: ok ? 1 : 0.4,
+          onTotal: function (e) { self.setState({ editTotal: e.target.value }); },
+          onCat: function (e) { self.setState({ editCat: e.target.value }); },
+          save: function () {
+            if (!ok) return;
+            var left = review.length - (r.status === 'review' ? 1 : 0);
+            var items = r.items.map(function (it, i) { return [it[0], vals[i]]; });
+            self.setState({ editId: null, receipts: receipts.map(function (x) {
+              return x.id === r.id ? Object.assign({}, x, { items: items, total: tot, cat: s.editCat, status: 'done', reason: null, flag: null }) : x; }) });
+            self.showToast(left > 0 ? 'Saved. ' + left + ' left to review.' : 'Saved. You’re all caught up.');
+          },
+          deleteReceipt: function () {
+            var before = receipts;
+            self.setState({ editId: null, receipts: receipts.filter(function (x) { return x.id !== r.id; }) });
+            self.showToast('Deleted ' + r.merchant + ' receipt.', before);
+          }
+        };
+      }
+    }
+
+    var isCurrent = !!m.partial;
+    return Object.assign({
+      isInsights: s.view === 'insights', isReceipts: s.view === 'receipts',
+      navInsightsBg: s.view === 'insights' ? '#EEF0F3' : 'transparent', navInsightsColor: s.view === 'insights' ? '#121417' : '#565C66',
+      navReceiptsBg: s.view === 'receipts' ? '#EEF0F3' : 'transparent', navReceiptsColor: s.view === 'receipts' ? '#121417' : '#565C66',
+      navInsightsCurrent: s.view === 'insights' ? 'page' : 'false', navReceiptsCurrent: s.view === 'receipts' ? 'page' : 'false',
+      goInsights: function () { self.setState({ view: 'insights' }); },
+      goReceipts: function () { self.setState({ view: 'receipts' }); },
+      m: { label: m.label, partialFlag: isCurrent }, prevLabel: prev ? prev.label : '',
+      atFirst: idx === 0, atLast: idx === MONTHS.length - 1,
+      prevOpacity: idx === 0 ? 0.35 : 1, nextOpacity: idx === MONTHS.length - 1 ? 0.35 : 1,
+      prevMonth: function () { if (idx > 0) self.setState({ month: idx - 1 }); },
+      nextMonth: function () { if (idx < MONTHS.length - 1) self.setState({ month: idx + 1 }); },
+      receiptCountLine: isCurrent ? receipts.length + ' receipts so far' : Math.round(total / 19) + ' receipts',
+      heroLabel: isCurrent ? 'Spent so far in ' + m.label : 'Spent in ' + m.label,
+      totalStr: money(total), heroDelta: heroDelta, heroDeltaColor: heroDeltaColor,
+      paceElapsed: (m.partial ? m.partial / m.days : 1).toFixed(3), paceElapsedPct: m.partial ? Math.round(m.partial / m.days * 100) + '%' : '',
+      paceSpent: prev ? Math.min(1, total / prevTotal).toFixed(3) : '0', paceSpentPct: prev ? Math.round(total / prevTotal * 100) + '%' : '',
+      insights: insights,
+      hasReview: review.length > 0, reviewCount: review.length,
+      reviewHeadline: review.length === 1 ? '1 receipt needs a quick look' : review.length + ' receipts need a quick look',
+      reviewChips: review.map(function (r) { return { merchant: r.merchant, color: colorOf(r.cat), open: function () { self.openEditor(r.id); } }; }),
+      cats: catRows, deltaHeader: isCurrent ? 'Pace vs ' + (prev ? prev.label : '') : (prev ? 'vs ' + prev.label : ''),
+      catHint: s.cat ? 'Showing ' + s.cat + ' across the page. Click it again to clear.' : 'Click a category to focus the whole page on it.',
+      trend: trend, trendAria: 'Monthly spending, June to November 2026',
+      trendNote: s.cat ? s.cat + ' highlighted. Totals show ' + s.cat + ' only.' : 'Dashed outline: where November is headed at this pace.',
+      merchTitle: s.cat ? 'Top ' + s.cat.toLowerCase() + ' merchants' : 'Top merchants',
+      hasCat: !!s.cat, clearCat: function () { self.setState({ cat: null }); }, merchants: merchants,
+      days: days, weekNote: 'Fridays and Saturdays are 41% of your spending', weekAria: 'Spending by weekday, highest on Friday and Saturday',
+      savedStr: money(total * 0.031), taxStr: money(total * 0.068),
+      tabs: tabs, groups: groups, processing: s.processing, listEmpty: s.view === 'receipts' && !groups.length && !s.processing,
+      addReceipt: function () {
+        if (s.processing) return;
+        self.setState({ view: 'receipts', tab: 'all', processing: true });
+        self.later(function () {
+          var id = Date.now();
+          var fresh = { id: id, merchant: 'Oconee Corner Grocery', cat: 'Groceries', day: 7,
+            items: [['Large Eggs 12ct', 4.29], ['Sourdough Bread', 4.99], ['Chicken Thighs 2 lb', 7.58], ['Greek Yogurt 4pk', 5.49], ['Whole Milk 1 gal', 3.79], ['Bananas 2.1 lb', 1.32], ['Baby Spinach 5oz', 3.49], ['Cheddar Block 8oz', 3.25], ['Store coupon', -1.50]],
+            tax: 1.31, total: 34.01, status: 'review', reason: 'New receipt — confirm what we read', flag: null };
+          self.setState({ processing: false, freshId: id, receipts: [fresh].concat(self.state.receipts) });
+          self.showToast('Receipt added. Give it a quick look.');
+        }, 2600);
+      },
+      catOptions: CATS, editing: !!ed, ed: ed || { merchant: '', reason: '', taxStr: '', dateLong: '' },
+      closeEditor: function () { self.setState({ editId: null }); },
+      hasToast: !!s.toast, toast: s.toast, canUndo: !!s.undoData,
+      undo: function () { if (s.undoData) { self.setState({ receipts: s.undoData, toast: '', undoData: null }); } }
+    }, edVals);
+  }
+}
+</script>
+</body>
+</html>
