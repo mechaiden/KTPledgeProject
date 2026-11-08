@@ -45,8 +45,24 @@ function summarize(receipts) {
 // The full receipt list, shared by the shell (badge), Insights and Receipts
 function useReceiptList() {
   const [receipts, setReceipts] = useState(null)
-  const refresh = useCallback(() => api('/receipts').then(setReceipts).catch(() => {}), [])
-  return { receipts, summary: summarize(receipts), refresh, update: setReceipts }
+  // Bumped on every local change (save, delete, upload). A list fetched before the latest
+  // change is out of date, and applying it would bring a deleted receipt back.
+  const version = useRef(0)
+  const update = useCallback((next) => {
+    version.current += 1
+    setReceipts(next)
+  }, [])
+  // Resolves to the fresh list, or null if a local change happened while it was loading
+  const load = useCallback(() => {
+    const started = version.current
+    return api('/receipts').then((next) => {
+      if (version.current !== started) return null
+      setReceipts(next)
+      return next
+    })
+  }, [])
+  const refresh = useCallback(() => load().catch(() => {}), [load])
+  return { receipts, summary: summarize(receipts), load, refresh, update }
 }
 
 function CountBadge({ count, label }) {
@@ -189,7 +205,9 @@ function NavLinks({ view, reviewCount }) {
 export default function App() {
   const { user, isLoading, logout } = useAuth()
   const [route, navigate] = useRoute()
-  const { receipts, summary, refresh, update } = useReceiptList()
+  const { receipts, summary, load, refresh, update } = useReceiptList()
+  // Bumped after a save or delete so Insights reloads its month totals
+  const [revision, setRevision] = useState(0)
   // Handed to the Receipts page once it's on screen: 'picker' opens the file picker, a FileList uploads those files
   const [pendingUpload, setPendingUpload] = useState(null)
   const uploadHandled = useCallback(() => setPendingUpload(null), [])
@@ -243,12 +261,14 @@ export default function App() {
   function handleSaved(updated) {
     const wasReview = receipts?.find((r) => r.id === updated.id)?.status === 'review'
     update((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+    setRevision((n) => n + 1)
     const left = reviewCount - (wasReview ? 1 : 0)
     setToast(wasReview ? (left > 0 ? `Saved. ${left} left to review.` : 'Saved. Nothing left to review.') : 'Saved.')
   }
 
   function handleDeleted(id) {
     update((prev) => prev.filter((r) => r.id !== id))
+    setRevision((n) => n + 1)
     setToast('Receipt deleted.')
   }
 
@@ -273,6 +293,7 @@ export default function App() {
           <InsightsPage
             summary={summary}
             receipts={receipts}
+            revision={revision}
             onReview={() => setReview({ queue: true })}
             onOpenMerchant={(name) => navigate(`receipts?q=${encodeURIComponent(name)}`)}
             onAddReceipts={addReceipts}
@@ -286,6 +307,7 @@ export default function App() {
           pendingUpload={pendingUpload}
           onPendingUploadHandled={uploadHandled}
           receipts={receipts}
+          onLoad={load}
           onReceiptsChange={update}
           onOpenReceipt={(id) => setReview({ id })}
         />

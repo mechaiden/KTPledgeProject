@@ -1,6 +1,10 @@
 import logging
 from pathlib import Path
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
+
 from ..db import SessionLocal
 from ..models import LineItem, Receipt
 from .classifier import classify, remembered_category
@@ -24,6 +28,25 @@ def check_receipt(receipt: Receipt) -> tuple[str, str | None]:
     return "done", None
 
 
+def _apply_result(db: Session, receipt: Receipt, data) -> None:
+    """Fill the receipt from the OCR result, or flag it for review if the OCR failed (data is None)."""
+    if data is None:
+        receipt.status = "review"
+        receipt.review_reason = "Couldn’t read this receipt, please fill it in"
+        return
+    receipt.merchant = data.merchant or receipt.merchant
+    receipt.date = data.date or receipt.date
+    receipt.subtotal = data.subtotal
+    receipt.discount = data.discount
+    receipt.tax = data.tax
+    receipt.total = data.total
+    receipt.items = [LineItem(name=i.name, qty=i.qty, total=i.total) for i in data.items]
+    receipt.category = remembered_category(db, receipt) or classify(
+        receipt.merchant, [i.name for i in data.items]
+    )
+    receipt.status, receipt.review_reason = check_receipt(receipt)
+
+
 def process_receipt(receipt_id: int) -> None:
     # Runs after the upload request has returned, so it needs its own session
     db = SessionLocal()
@@ -35,23 +58,18 @@ def process_receipt(receipt_id: int) -> None:
             data = extract_fields(parse_document(Path(receipt.file_path)))
         except Exception:
             logger.exception("Failed to read receipt %s", receipt_id)
-            receipt.status = "review"
-            receipt.review_reason = "Couldn’t read this receipt, please fill it in"
-            db.commit()
-            return
+            data = None
 
-        receipt.merchant = data.merchant or receipt.merchant
-        receipt.date = data.date or receipt.date
-        receipt.subtotal = data.subtotal
-        receipt.discount = data.discount
-        receipt.tax = data.tax
-        receipt.total = data.total
-        receipt.items = [LineItem(name=i.name, qty=i.qty, total=i.total) for i in data.items]
-        receipt.category = remembered_category(db, receipt) or classify(
-            receipt.merchant, [i.name for i in data.items]
-        )
-        receipt.status, receipt.review_reason = check_receipt(receipt)
-        db.commit()
+        # Reading can take a while; the user may have deleted the receipt in the meantime
+        if db.scalar(select(Receipt.id).where(Receipt.id == receipt_id)) is None:
+            logger.info("Receipt %s was deleted while processing; dropping the result", receipt_id)
+            return
+        try:
+            _apply_result(db, receipt, data)
+            db.commit()
+        except StaleDataError:  # deleted in the moment between the check and the save
+            db.rollback()
+            logger.info("Receipt %s was deleted while processing; dropping the result", receipt_id)
     finally:
         db.close()
 

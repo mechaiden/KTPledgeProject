@@ -67,7 +67,7 @@ function ReceiptRow({ receipt: r, onOpen }) {
   )
 }
 
-export default function ReceiptsPage({ receipts, initialReviewOnly = false, initialQuery = '', pendingUpload = null, onPendingUploadHandled, onReceiptsChange, onOpenReceipt }) {
+export default function ReceiptsPage({ receipts, initialReviewOnly = false, initialQuery = '', pendingUpload = null, onPendingUploadHandled, onLoad, onReceiptsChange, onOpenReceipt }) {
   // The list lives in App so Review, Insights and the badge all see the same receipts
   const setReceipts = onReceiptsChange
   const [loadError, setLoadError] = useState('')
@@ -85,15 +85,16 @@ export default function ReceiptsPage({ receipts, initialReviewOnly = false, init
 
   const refresh = useCallback(
     () =>
-      api('/receipts').then((next) => {
+      // onLoad skips (null) a list that was fetched before a newer local change; the next poll catches up
+      onLoad().then((next) => {
+        if (!next) return
         const finished = next.filter((r) => uploadingIds.current.has(r.id) && r.status !== 'processing')
         finished.forEach((r) => uploadingIds.current.delete(r.id))
         // Uploads start out dated today, then move to the date printed on the receipt
         const moved = finished.filter((r) => monthOf(r.date) !== currentMonth())
         if (moved.length) setFiledElsewhere((prev) => [...prev, ...moved])
-        setReceipts(next)
       }),
-    [setReceipts],
+    [onLoad],
   )
 
   useEffect(() => {

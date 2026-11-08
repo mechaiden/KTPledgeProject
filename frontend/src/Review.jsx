@@ -125,6 +125,23 @@ function Editor({ receipt, inQueue, onConfirm, onSkip, onDelete }) {
     }
   }
 
+  // First press asks, second press deletes. A failed delete says why and keeps the receipt open.
+  async function remove() {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      await onDelete(receipt.id)
+    } catch (err) {
+      setError(`Couldn’t delete: ${err.message}`)
+      setConfirmDelete(false)
+      setSaving(false)
+    }
+  }
+
   let reason = receipt.reviewReason
   if (reason && !flags.all) reason = `${reason}. The spot is outlined on the receipt and the field that needs you is highlighted.`
   else if (reason) reason = `${reason}.`.replace(/\.\.$/, '.')
@@ -234,15 +251,9 @@ function Editor({ receipt, inQueue, onConfirm, onSkip, onDelete }) {
         </div>
 
         <div className="review-actions">
-          {receipt.status === 'done' && (
-            <button
-              type="button"
-              className="link danger"
-              onClick={() => (confirmDelete ? onDelete(receipt.id) : setConfirmDelete(true))}
-            >
-              {confirmDelete ? 'Delete for good?' : 'Delete receipt'}
-            </button>
-          )}
+          <button type="button" className="link danger" onClick={remove} disabled={saving}>
+            {confirmDelete ? 'Delete for good?' : 'Delete receipt'}
+          </button>
           {error && <p className="error review-error" role="alert">{error}</p>}
           {inQueue && (
             <button type="button" className="button" onClick={onSkip}>Skip</button>
@@ -295,14 +306,14 @@ export default function Review({ receipts, openId, queueMode, onClose, onSaved, 
     setDone(true)
   }
 
-  function confirm(updated) {
-    onSaved(updated)
+  // After a confirm or delete: one receipt closes the sheet, the queue moves to the next one waiting
+  function advancePast(handledId) {
     if (!queueMode) {
       onClose()
       return
     }
-    // `receipts` still has the old status until the parent re-renders, so count this one out
-    const stillWaiting = queue.filter((id) => id !== updated.id && receipts.find((r) => r.id === id)?.status === 'review')
+    // `receipts` still has the old list until the parent re-renders, so count this one out
+    const stillWaiting = queue.filter((id) => id !== handledId && receipts.find((r) => r.id === id)?.status === 'review')
     if (!stillWaiting.length) setDone(true)
     else {
       for (let step = 1; step <= queue.length; step++) {
@@ -347,12 +358,15 @@ export default function Review({ receipts, openId, queueMode, onClose, onSaved, 
           key={receipt.id}
           receipt={receipt}
           inQueue={queueMode && left > 1}
-          onConfirm={confirm}
+          onConfirm={(updated) => {
+            onSaved(updated)
+            advancePast(updated.id)
+          }}
           onSkip={next}
           onDelete={async (id) => {
             await api(`/receipts/${id}`, { method: 'DELETE' })
             onDeleted(id)
-            onClose()
+            advancePast(id)
           }}
         />
       )}

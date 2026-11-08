@@ -21,7 +21,7 @@ const KEYS = Object.keys(ENDPOINTS)
 const ICON = { size: 16, strokeWidth: 2, 'aria-hidden': true }
 
 // While a new month loads, each card keeps showing the last data it had, so nothing jumps.
-function useInsights(month) {
+function useInsights(month, revision) {
   const [data, setData] = useState({})
   const [errors, setErrors] = useState({})
   const latest = useRef({}) // newest request per key; older responses are ignored
@@ -43,9 +43,10 @@ function useInsights(month) {
     }
   }, [])
 
+  // Also reloads after a receipt is saved or deleted (revision), keeping the old numbers until the new ones land
   useEffect(() => {
     load(KEYS, month)
-  }, [month, load])
+  }, [month, revision, load])
 
   // Retry drops the error and the stale value so the card shows its loading state
   const retry = useCallback(
@@ -123,14 +124,14 @@ function EmptyMonth({ month, latestMonth, onSelectMonth }) {
 
 // ---------- Page ----------
 
-export default function InsightsPage({ summary, receipts, onReview, onAddReceipts, onOpenMerchant }) {
+export default function InsightsPage({ summary, receipts, revision, onReview, onAddReceipts, onOpenMerchant }) {
   const [month, setMonth] = useState(currentMonth)
   // Filters shared by every section: one category at a time, plus a merchant search
   const [category, setCategory] = useState(null)
   const [query, setQuery] = useState('')
   // A weekday picked in the findings, highlighted in the day-by-day chart (Monday = 0)
   const [weekday, setWeekday] = useState(null)
-  const { data, errors, retry } = useInsights(month)
+  const { data, errors, retry } = useInsights(month, revision)
 
   const changeMonth = useCallback((next) => {
     if (next <= currentMonth()) setMonth(next)
