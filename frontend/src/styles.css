@@ -870,3 +870,111 @@ input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outli
   .button, .icon-button, .fab { transition: background-color 150ms linear; }
   .button:active:not(:disabled), .icon-button:active:not(:disabled), .fab:active { transform: none; }
 }
+
+/* ============================================================
+   Command bar: month, merchant search, key hints, category chips
+   ============================================================ */
+.command-bar {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.command-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) 20px;
+  padding: 10px 14px;
+}
+.command-month { display: flex; align-items: center; gap: 2px; }
+.command-month-label {
+  min-width: 150px;
+  font-size: var(--text-16);
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.command-search {
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 380px;
+  min-height: var(--target);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink-soft);
+}
+.command-search:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.command-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-14);
+}
+.command-search input:focus-visible { outline: none; }
+.command-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+.kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-card);
+  color: var(--ink-soft);
+  font: 400 12.5px / 1.4 var(--mono);
+}
+.command-chips {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) 10px;
+  border-top: 1px solid var(--wash);
+  overflow-x: auto;
+}
+.chip {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-13);
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 120ms var(--ease);
+}
+.chip:active { transform: scale(0.97); }
+.chip-dot { width: 9px; height: 9px; border-radius: var(--radius-bar); background: var(--cat); }
+.chip[aria-pressed='true'] {
+  border-color: var(--cat);
+  background: color-mix(in srgb, var(--cat) 18%, var(--surface));
+  font-weight: 600;
+}
+.chip-all[aria-pressed='true'] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+@media (hover: hover) {
+  .chip:hover:not([aria-pressed='true']) { background: var(--wash); }
+}
+@media (max-width: 640px) {
+  .command-keys { display: none; } /* no hardware keyboard to hint at */
+  .command-month { flex: 1 1 100%; justify-content: space-between; }
+  .command-search { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip { transition: none; }
+  .chip:active { transform: none; }
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Plus, RotateCw, Upload } from 'lucide-react'
+import { ArrowDown, ArrowUp, Plus, RotateCw, Upload } from 'lucide-react'
 import { api } from './api.js'
+import CommandBar from './CommandBar.jsx'
 import {
   addMonths,
   currentMonth,
@@ -152,28 +153,6 @@ function SkeletonChart() {
 
 // ---------- Month switcher ----------
 
-function MonthBar({ month, onStep }) {
-  const atLatest = month >= currentMonth()
-  return (
-    <div className="month-bar">
-      <h1 aria-live="polite">{formatMonth(month)}</h1>
-      <div className="month-steps">
-        <button type="button" className="icon-button" onClick={() => onStep(-1)} aria-label="Previous month">
-          <ChevronLeft {...ICON} />
-        </button>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => onStep(1)}
-          disabled={atLatest}
-          aria-label="Next month"
-        >
-          <ChevronRight {...ICON} />
-        </button>
-      </div>
-    </div>
-  )
-}
 
 // ---------- The month total (the one card with the torn edge) ----------
 
@@ -647,12 +626,11 @@ function EmptyMonth({ month, latestMonth, onSelectMonth }) {
 
 // ---------- Page ----------
 
-function isTypingTarget(el) {
-  return el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))
-}
-
 export default function InsightsPage({ summary, onReview, onAddReceipts }) {
   const [month, setMonth] = useState(currentMonth)
+  // Filters shared by every section: one category at a time, plus a merchant search
+  const [category, setCategory] = useState(null)
+  const [query, setQuery] = useState('')
   const { data, dataMonth, errors, retry } = useInsights(month)
 
   const changeMonth = useCallback((next) => {
@@ -667,16 +645,10 @@ export default function InsightsPage({ summary, onReview, onAddReceipts }) {
     })
   }, [])
 
-  // ← and → step through months, unless you're typing or holding a modifier
-  useEffect(() => {
-    function onKeyDown(e) {
-      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || isTypingTarget(e.target)) return
-      if (e.key === 'ArrowLeft') stepMonth(-1)
-      else if (e.key === 'ArrowRight') stepMonth(1)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [stepMonth])
+  const clearFilters = useCallback(() => {
+    setCategory(null)
+    setQuery('')
+  }, [])
 
   const reviewCount = summary?.reviewCount ?? 0
 
@@ -693,7 +665,15 @@ export default function InsightsPage({ summary, onReview, onAddReceipts }) {
 
   return (
     <div className="insights">
-      <MonthBar month={month} onStep={stepMonth} />
+      <CommandBar
+        month={month}
+        onStep={stepMonth}
+        category={category}
+        onCategory={setCategory}
+        query={query}
+        onQuery={setQuery}
+        onClear={clearFilters}
+      />
 
       {monthIsEmpty ? (
         <>
