@@ -25,3 +25,6 @@ GEMINI.md
 .windsurfrules
 .github/copilot-instructions.md
 .mcp.json
+
+# Planning docs (kept local, not in the repo)
+docs/
