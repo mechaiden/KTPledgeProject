@@ -12,3 +12,16 @@ __pycache__/
 
 # Playwright MCP screenshots and logs
 .playwright-mcp/
+
+# AI agent files (Claude Code, Codex, Cursor, Gemini, Copilot, etc.)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+AGENTS.md
+GEMINI.md
+.gemini/
+.cursor/
+.cursorrules
+.windsurfrules
+.github/copilot-instructions.md
+.mcp.json
